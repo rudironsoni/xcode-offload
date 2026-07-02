@@ -48,8 +48,8 @@ struct CLI {
             try daemon(arguments: &arguments)
         case "launchd":
             try launchd(arguments: &arguments)
-        case "native":
-            try native(arguments: &arguments)
+        case "mounts", "native":
+            try mounts(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
         case "wrap-xcrun":
@@ -220,28 +220,28 @@ struct CLI {
         }
     }
 
-    private func native(arguments: inout Arguments) throws {
+    private func mounts(arguments: inout Arguments) throws {
         let subcommand = arguments.popCommand() ?? "help"
 
         switch subcommand {
         case "install":
-            try nativeInstall(arguments: &arguments)
+            try mountsInstall(arguments: &arguments)
         case "repair":
-            try nativeRepair(arguments: &arguments)
+            try mountsRepair(arguments: &arguments)
         case "uninstall":
-            try nativeUninstall(arguments: &arguments)
+            try mountsUninstall(arguments: &arguments)
         case "status":
-            try nativeStatus(arguments: &arguments)
-        case "certify":
-            try nativeCertify(arguments: &arguments)
+            try mountsStatus(arguments: &arguments)
+        case "verify", "certify":
+            try mountsVerify(arguments: &arguments)
         case "help", "-h", "--help":
-            printNativeHelp()
+            printMountsHelp()
         default:
-            throw CommandError("unknown native command: \(subcommand)", exitCode: 64)
+            throw CommandError("unknown mounts command: \(subcommand)", exitCode: 64)
         }
     }
 
-    private func nativeInstall(arguments: inout Arguments) throws {
+    private func mountsInstall(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
@@ -253,7 +253,7 @@ struct CLI {
         actions.forEach { print($0) }
     }
 
-    private func nativeRepair(arguments: inout Arguments) throws {
+    private func mountsRepair(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
@@ -265,7 +265,7 @@ struct CLI {
         actions.forEach { print($0) }
     }
 
-    private func nativeUninstall(arguments: inout Arguments) throws {
+    private func mountsUninstall(arguments: inout Arguments) throws {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let unload = arguments.popFlag("--unload")
@@ -276,7 +276,7 @@ struct CLI {
         actions.forEach { print($0) }
     }
 
-    private func nativeStatus(arguments: inout Arguments) throws {
+    private func mountsStatus(arguments: inout Arguments) throws {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let json = arguments.popFlag("--json")
         let config = try makeConfig(arguments: &arguments)
@@ -293,9 +293,9 @@ struct CLI {
                 print(check.humanLine)
             }
             if report.passed {
-                print("OK xcode native storage status passed")
+                print("OK xcode-storage mounts status passed")
             } else {
-                FileHandle.standardError.write(Data("FAIL xcode native storage status found \(report.failureCount) issue(s)\n".utf8))
+                FileHandle.standardError.write(Data("FAIL xcode-storage mounts status found \(report.failureCount) issue(s)\n".utf8))
             }
         }
 
@@ -304,31 +304,40 @@ struct CLI {
         }
     }
 
-    private func nativeCertify(arguments: inout Arguments) throws {
+    private func mountsVerify(arguments: inout Arguments) throws {
         let modeValue = arguments.popOption("--mode") ?? "user"
-        guard let mode = NativeCertificationMode(rawValue: modeValue) else {
-            throw CommandError("expected certification mode: user, system, or e2e", exitCode: 64)
+        guard let mode = MountVerificationMode(rawValue: modeValue) else {
+            throw CommandError("expected verification mode: user, system, or e2e", exitCode: 64)
         }
 
         let environment = ProcessInfo.processInfo.environment
-        let certRoot = arguments.popOption("--cert-root") ?? environment["XCODE_STORAGE_CERT_ROOT"]
-        guard let certRoot, !certRoot.isEmpty else {
-            throw CommandError("missing certification root. Pass --cert-root PATH or set XCODE_STORAGE_CERT_ROOT.", exitCode: 64)
+        let scratchRoot = arguments.popOption("--scratch-root")
+            ?? arguments.popOption("--cert-root")
+            ?? environment["XCODE_STORAGE_VERIFY_ROOT"]
+            ?? environment["XCODE_STORAGE_CERT_ROOT"]
+        guard let scratchRoot, !scratchRoot.isEmpty else {
+            throw CommandError("missing scratch root. Pass --scratch-root PATH or set XCODE_STORAGE_VERIFY_ROOT.", exitCode: 64)
         }
 
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
-        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_CERT_HOME"] ?? certificationHome(environment: environment)
-        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_CERT_RUNTIME"]
-        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_CERT_DEVICE_TYPE"]
-        let keepArtifacts = arguments.popFlag("--keep-artifacts") || environmentFlag(environment["XCODE_STORAGE_CERT_KEEP_ARTIFACTS"])
-        let allowSystem = arguments.popFlag("--allow-system") || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SYSTEM"])
-        let allowSimDelete = arguments.popFlag("--allow-sim-delete") || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SIM_DELETE"])
+        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_VERIFY_HOME"] ?? environment["XCODE_STORAGE_CERT_HOME"] ?? verificationHome(environment: environment)
+        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_VERIFY_RUNTIME"] ?? environment["XCODE_STORAGE_CERT_RUNTIME"]
+        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_VERIFY_DEVICE_TYPE"] ?? environment["XCODE_STORAGE_CERT_DEVICE_TYPE"]
+        let keepArtifacts = arguments.popFlag("--keep-artifacts")
+            || environmentFlag(environment["XCODE_STORAGE_VERIFY_KEEP_ARTIFACTS"])
+            || environmentFlag(environment["XCODE_STORAGE_CERT_KEEP_ARTIFACTS"])
+        let allowSystem = arguments.popFlag("--allow-system")
+            || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SYSTEM"])
+            || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SYSTEM"])
+        let allowSimDelete = arguments.popFlag("--allow-sim-delete")
+            || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SIM_DELETE"])
+            || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SIM_DELETE"])
         let bootTimeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
         try arguments.rejectUnknown()
 
-        let options = NativeCertificationOptions(
+        let options = MountVerificationOptions(
             mode: mode,
-            certRoot: certRoot,
+            scratchRoot: scratchRoot,
             home: home,
             toolPath: toolPath,
             runtime: runtime,
@@ -339,7 +348,7 @@ struct CLI {
             bootTimeoutSeconds: bootTimeout
         )
 
-        try NativeCertification().run(options: options) { event in
+        try MountVerification().run(options: options) { event in
             print(event)
         }
     }
@@ -444,7 +453,7 @@ struct CLI {
         return "\(FileManager.default.currentDirectoryPath)/\(argument)"
     }
 
-    private func certificationHome(environment: [String: String]) -> String {
+    private func verificationHome(environment: [String: String]) -> String {
         if let sudoUser = environment["SUDO_USER"], !sudoUser.isEmpty {
             return "/Users/\(sudoUser)"
         }
@@ -477,11 +486,11 @@ struct CLI {
               xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
               xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
               xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-              xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
               xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
@@ -513,19 +522,19 @@ struct CLI {
         )
     }
 
-    private func printNativeHelp() {
+    private func printMountsHelp() {
         print(
             """
-            xcode-storage native manages transparent APFS sparsebundle mountpoints at Apple paths.
+            xcode-storage mounts manages APFS sparsebundle mountpoints at Apple paths.
 
             Usage:
-              xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
-            Native mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
+            This mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
             """
         )
     }

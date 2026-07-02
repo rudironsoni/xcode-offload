@@ -40,8 +40,8 @@ grep -F "unknown command: definitely-not-a-command" "$tmp/stderr" >/dev/null
 expect_failure "$bin" sim recreate --name SmokeOnly --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-17
 grep -F "missing required option: --runtime" "$tmp/stderr" >/dev/null
 
-expect_failure "$bin" native certify --mode user
-grep -F "missing certification root" "$tmp/stderr" >/dev/null
+expect_failure "$bin" mounts verify --mode user
+grep -F "missing scratch root" "$tmp/stderr" >/dev/null
 
 output="$("$bin" init --root "$tmp/External Disk" --dry-run --no-create-images)"
 require_output "init dry-run" "mkdir -p '$tmp/External Disk/Xcode'" "$output"
@@ -52,16 +52,16 @@ require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.
 output="$("$bin" launchd install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run)"
 require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$output"
 
-output="$("$bin" native install --root "$tmp/External Disk" --home "$tmp/Home" --scope user --dry-run)"
-require_output "native user install dry-run" "DerivedData.sparsebundle" "$output"
-require_output "native user install dry-run" "$tmp/Home/Library/Developer/Xcode/DerivedData" "$output"
+output="$("$bin" mounts install --root "$tmp/External Disk" --home "$tmp/Home" --scope user --dry-run)"
+require_output "mounts user install dry-run" "DerivedData.sparsebundle" "$output"
+require_output "mounts user install dry-run" "$tmp/Home/Library/Developer/Xcode/DerivedData" "$output"
 
-if "$bin" native install --root "$tmp/External Disk" --home "$tmp/Home" --scope system --dry-run >"$tmp/native-system.out" 2>"$tmp/native-system.err"; then
-  output="$(cat "$tmp/native-system.out")"
-  require_output "native system install dry-run" "/Library/Developer/CoreSimulator/Images" "$output"
-  require_output "native system install dry-run" "chmod 1777" "$output"
+if "$bin" mounts install --root "$tmp/External Disk" --home "$tmp/Home" --scope system --dry-run >"$tmp/mounts-system.out" 2>"$tmp/mounts-system.err"; then
+  output="$(cat "$tmp/mounts-system.out")"
+  require_output "mounts system install dry-run" "/Library/Developer/CoreSimulator/Images" "$output"
+  require_output "mounts system install dry-run" "chmod 1777" "$output"
 else
-  grep -F "native mountpoint is already mounted from a different backend" "$tmp/native-system.err" >/dev/null
+  grep -F "mountpoint is already mounted from a different backend" "$tmp/mounts-system.err" >/dev/null
 fi
 
 if "$bin" doctor --root "$tmp/missing-root" --skip-simctl --json >"$tmp/doctor.json" 2>"$tmp/doctor.err"; then

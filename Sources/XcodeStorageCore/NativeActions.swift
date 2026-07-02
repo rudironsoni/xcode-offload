@@ -97,11 +97,11 @@ public struct NativeActions {
 
         if includeLaunchd {
             if scope == .user || scope == .all {
-                checks.append(pathExists(config.nativeUserLaunchAgentPath, label: "Native user LaunchAgent exists"))
+                checks.append(pathExists(config.nativeUserLaunchAgentPath, label: "Mount user LaunchAgent exists"))
             }
             if scope == .system || scope == .all {
-                checks.append(pathExists(config.nativeSystemLaunchDaemonPath, label: "Native system LaunchDaemon exists"))
-                checks.append(executableExists(config.nativeSystemHelperPath, label: "Native system helper exists"))
+                checks.append(pathExists(config.nativeSystemLaunchDaemonPath, label: "Mount system LaunchDaemon exists"))
+                checks.append(executableExists(config.nativeSystemHelperPath, label: "Mount system helper exists"))
             }
         }
 
@@ -146,7 +146,7 @@ public struct NativeActions {
             if isMountedFromConfiguredBackend(nativeMount) {
                 return ["already mounted \(nativeMount.mountPoint.shellQuoted)"]
             }
-            throw CommandError("native mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
+            throw CommandError("mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
         }
 
         guard dryRun || fileManager.fileExists(atPath: nativeMount.imagePath) else {
@@ -177,7 +177,7 @@ public struct NativeActions {
         }
 
         if !isMountedFromConfiguredBackend(nativeMount) {
-            throw CommandError("refusing to detach native mountpoint from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
+            throw CommandError("refusing to detach mountpoint from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
         }
 
         let command = ["/usr/bin/hdiutil", "detach", nativeMount.mountPoint]
@@ -245,7 +245,7 @@ public struct NativeActions {
 
         if isMounted(nativeMount.mountPoint) {
             if !isMountedFromConfiguredBackend(nativeMount) {
-                throw CommandError("native mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
+                throw CommandError("mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
             }
             return ["already prepared \(nativeMount.mountPoint.shellQuoted)"]
         }
@@ -281,7 +281,7 @@ public struct NativeActions {
             actions.append("write \(config.nativeUserLaunchAgentPath.shellQuoted)")
             actions.append("chmod 0644 \(config.nativeUserLaunchAgentPath.shellQuoted)")
             if !dryRun {
-                try validatePlist(templates.userAgentPlist, name: "native user LaunchAgent")
+                try validatePlist(templates.userAgentPlist, name: "mount user LaunchAgent")
                 try fileManager.createDirectory(atPath: directory, withIntermediateDirectories: true)
                 try templates.userAgentPlist.write(toFile: config.nativeUserLaunchAgentPath, atomically: true, encoding: .utf8)
                 try fileManager.setAttributes([.posixPermissions: 0o644], ofItemAtPath: config.nativeUserLaunchAgentPath)
@@ -309,7 +309,7 @@ public struct NativeActions {
             actions.append("chown root:wheel \(config.nativeSystemLaunchDaemonPath.shellQuoted)")
             actions.append("chmod 0644 \(config.nativeSystemLaunchDaemonPath.shellQuoted)")
             if !dryRun {
-                try validatePlist(templates.systemDaemonPlist, name: "native system LaunchDaemon")
+                try validatePlist(templates.systemDaemonPlist, name: "mount system LaunchDaemon")
                 try fileManager.createDirectory(atPath: helperDirectory, withIntermediateDirectories: true)
                 try fileManager.createDirectory(atPath: daemonDirectory, withIntermediateDirectories: true)
                 try templates.systemHelper.write(toFile: config.nativeSystemHelperPath, atomically: true, encoding: .utf8)
@@ -335,52 +335,52 @@ public struct NativeActions {
 
     private func symlinkCheck(_ nativeMount: NativeMount) -> DoctorCheck {
         if isSymlink(nativeMount.mountPoint) {
-            return DoctorCheck(.fail, "Native \(nativeMount.id) mountpoint is not a symlink", detail: nativeMount.mountPoint)
+            return DoctorCheck(.fail, "Mount \(nativeMount.id) mountpoint is not a symlink", detail: nativeMount.mountPoint)
         }
-        return DoctorCheck(.pass, "Native \(nativeMount.id) mountpoint is not a symlink", detail: nativeMount.mountPoint)
+        return DoctorCheck(.pass, "Mount \(nativeMount.id) mountpoint is not a symlink", detail: nativeMount.mountPoint)
     }
 
     private func imageCheck(_ nativeMount: NativeMount) -> DoctorCheck {
         if fileManager.fileExists(atPath: nativeMount.imagePath) {
-            return DoctorCheck(.pass, "Native \(nativeMount.id) sparsebundle exists", detail: nativeMount.imagePath)
+            return DoctorCheck(.pass, "Mount \(nativeMount.id) sparsebundle exists", detail: nativeMount.imagePath)
         }
-        return DoctorCheck(.fail, "Native \(nativeMount.id) sparsebundle missing", detail: nativeMount.imagePath)
+        return DoctorCheck(.fail, "Mount \(nativeMount.id) sparsebundle missing", detail: nativeMount.imagePath)
     }
 
     private func mountCheck(_ nativeMount: NativeMount, mountOutput: String) -> DoctorCheck {
         guard let mountLine = TextParsers.mountLine(for: nativeMount.mountPoint, in: mountOutput) else {
-            return DoctorCheck(.fail, "Native \(nativeMount.id) is mounted at \(nativeMount.mountPoint)")
+            return DoctorCheck(.fail, "Mount \(nativeMount.id) is mounted at \(nativeMount.mountPoint)")
         }
         if mountLine.contains("noowners") {
-            return DoctorCheck(.fail, "Native \(nativeMount.id) mount is owners-enabled", detail: mountLine)
+            return DoctorCheck(.fail, "Mount \(nativeMount.id) mount is owners-enabled", detail: mountLine)
         }
-        return DoctorCheck(.pass, "Native \(nativeMount.id) is mounted at \(nativeMount.mountPoint)", detail: mountLine)
+        return DoctorCheck(.pass, "Mount \(nativeMount.id) is mounted at \(nativeMount.mountPoint)", detail: mountLine)
     }
 
     private func apfsCheck(_ nativeMount: NativeMount) -> DoctorCheck {
         let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", nativeMount.mountPoint], environment: [:])
         guard let result, result.succeeded, TextParsers.isAPFS(fromDiskutilInfo: result.stdout) else {
-            return DoctorCheck(.fail, "Native \(nativeMount.id) filesystem is APFS", detail: nativeMount.mountPoint)
+            return DoctorCheck(.fail, "Mount \(nativeMount.id) filesystem is APFS", detail: nativeMount.mountPoint)
         }
-        return DoctorCheck(.pass, "Native \(nativeMount.id) filesystem is APFS")
+        return DoctorCheck(.pass, "Mount \(nativeMount.id) filesystem is APFS")
     }
 
     private func ownersCheck(_ nativeMount: NativeMount) -> DoctorCheck {
         let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", nativeMount.mountPoint], environment: [:])
         guard let result, result.succeeded else {
-            return DoctorCheck(.fail, "Native \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
+            return DoctorCheck(.fail, "Mount \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
         }
         if TextParsers.ownersEnabled(fromDiskutilInfo: result.stdout) == true {
-            return DoctorCheck(.pass, "Native \(nativeMount.id) owners are enabled")
+            return DoctorCheck(.pass, "Mount \(nativeMount.id) owners are enabled")
         }
-        return DoctorCheck(.fail, "Native \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
+        return DoctorCheck(.fail, "Mount \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
     }
 
     private func backendCheck(_ nativeMount: NativeMount, hdiutilOutput: String) -> DoctorCheck {
         if TextParsers.hdiutilInfoContains(imagePath: nativeMount.imagePath, mountPoint: nativeMount.mountPoint, in: hdiutilOutput) {
-            return DoctorCheck(.pass, "Native \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)
+            return DoctorCheck(.pass, "Mount \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)
         }
-        return DoctorCheck(.fail, "Native \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)
+        return DoctorCheck(.fail, "Mount \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)
     }
 
     private func pathExists(_ path: String, label: String) -> DoctorCheck {
@@ -397,7 +397,7 @@ public struct NativeActions {
 
     private func rejectSymlink(_ path: String) throws {
         if isSymlink(path) {
-            throw CommandError("native mountpoint must not be a symlink: \(path)", exitCode: 78)
+            throw CommandError("mountpoint must not be a symlink: \(path)", exitCode: 78)
         }
     }
 
@@ -410,7 +410,7 @@ public struct NativeActions {
             return
         }
         guard geteuid() == 0 else {
-            throw CommandError("system native scope requires root. Re-run with sudo or use --scope user.", exitCode: 77)
+            throw CommandError("system mount scope requires root. Re-run with sudo or use --scope user.", exitCode: 77)
         }
     }
 

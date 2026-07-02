@@ -53,11 +53,11 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         self.cacheHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-coresimulator-caches"
         self.userLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"
         self.systemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist"
-        self.nativeUserLaunchAgentLabel = "io.github.rudironsoni.xcode-storage.native-user"
-        self.nativeSystemLaunchDaemonLabel = "io.github.rudironsoni.xcode-storage.native-system"
-        self.nativeSystemHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-native-system"
-        self.nativeUserLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.native-user.plist"
-        self.nativeSystemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.native-system.plist"
+        self.nativeUserLaunchAgentLabel = "io.github.rudironsoni.xcode-storage.mounts-user"
+        self.nativeSystemLaunchDaemonLabel = "io.github.rudironsoni.xcode-storage.mounts-system"
+        self.nativeSystemHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mounts-system"
+        self.nativeUserLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.mounts-user.plist"
+        self.nativeSystemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.mounts-system.plist"
     }
 
     public var xcrunShim: String {
@@ -91,7 +91,7 @@ public struct StorageConfig: Codable, Equatable, Sendable {
     }
 
     public var nativeBackupRoot: String {
-        "\(xcodeRoot)/Backups/native"
+        "\(xcodeRoot)/Backups/mounts"
     }
 
     public var nativeImagesImage: String {

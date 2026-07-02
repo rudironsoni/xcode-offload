@@ -14,7 +14,7 @@ public struct NativeLaunchdTemplates {
             label: config.nativeUserLaunchAgentLabel,
             programArguments: [
                 toolPath,
-                "native",
+                "mounts",
                 "repair",
                 "--root",
                 config.root,
@@ -25,8 +25,8 @@ public struct NativeLaunchdTemplates {
             ],
             runAtLoad: true,
             startInterval: 60,
-            stdout: "\(config.home)/Library/Logs/xcode-storage-native-user.log",
-            stderr: "\(config.home)/Library/Logs/xcode-storage-native-user.err"
+            stdout: "\(config.home)/Library/Logs/xcode-storage-mounts-user.log",
+            stderr: "\(config.home)/Library/Logs/xcode-storage-mounts-user.err"
         )
     }
 
@@ -36,8 +36,8 @@ public struct NativeLaunchdTemplates {
             programArguments: [config.nativeSystemHelperPath],
             runAtLoad: true,
             startInterval: 60,
-            stdout: "/var/log/xcode-storage-native-system.log",
-            stderr: "/var/log/xcode-storage-native-system.err"
+            stdout: "/var/log/xcode-storage-mounts-system.log",
+            stderr: "/var/log/xcode-storage-mounts-system.err"
         )
     }
 
@@ -128,7 +128,7 @@ public struct NativeLaunchdTemplates {
 
         reject_symlink() {
           if [[ -L "$1" ]]; then
-            fail "native mountpoint must not be a symlink: $1"
+            fail "mountpoint must not be a symlink: $1"
           fi
         }
 
@@ -139,7 +139,7 @@ public struct NativeLaunchdTemplates {
           reject_symlink "$mountpoint"
           /bin/mkdir -p "$(/usr/bin/dirname "$mountpoint")"
           if [[ -e "$mountpoint" && ! -d "$mountpoint" ]]; then
-            fail "native mountpoint is not a directory: $mountpoint"
+            fail "mountpoint is not a directory: $mountpoint"
           fi
           if [[ -d "$mountpoint" && "$(/bin/ls -A "$mountpoint" 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')" != "0" ]]; then
             local backup="$backup_root/$(/bin/date +%Y%m%d-%H%M%S)/$id"
@@ -187,7 +187,7 @@ public struct NativeLaunchdTemplates {
             if mounted_from_configured_backend "$image" "$mountpoint"; then
               continue
             fi
-            fail "native mountpoint is already mounted from a different backend: $mountpoint"
+            fail "mountpoint is already mounted from a different backend: $mountpoint"
           fi
           if [[ "$preparation" == "coreSimulatorImages" ]]; then
             prepare_images_sparsebundle "$image"

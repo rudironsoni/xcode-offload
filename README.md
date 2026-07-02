@@ -3,14 +3,14 @@
 `xcode-storage` is a macOS CLI for moving Xcode and CoreSimulator state onto
 external storage while preserving the normal Apple command surface.
 
-The target workflow covers:
+It manages:
 
-- external Xcode state under a user-selected root, for example `$XCODE_STORAGE_ROOT/Xcode`
-- external `DerivedData`, package cache, temporary directory, logs, products, result bundles
-- sparsebundle-backed CoreSimulator device and cache stores
-- native APFS sparsebundle mountpoints for transparent Apple default paths
+- Xcode state under a user-selected root, for example `$XCODE_STORAGE_ROOT/Xcode`
+- APFS sparsebundle mountpoints at Apple default paths
+- CoreSimulator device, cache, image, and volume storage
+- Xcode `DerivedData` and `Archives`
 - optional `xcrun`, `simctl`, and `xcodebuild` shims for explicit flag rewriting
-- doctor and certification checks that validate actual mount state
+- diagnostics that validate actual mount state
 
 This is intentionally separate from `xcodes`. `xcodes` manages Xcode versions
 and simulator runtimes. `xcode-storage` manages where developer state lives and
@@ -25,7 +25,7 @@ swift build
 
 ## Versioning
 
-`xcode-storage` uses SemVer for releases. Release tags must start with `v`, for
+`xcode-storage` uses SemVer releases. Release tags must start with `v`, for
 example `v0.1.0`.
 
 ```sh
@@ -48,11 +48,11 @@ xcode-storage unmount devices|caches [--root PATH] [--dry-run]
 xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
 xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
 xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage sim runtimes
@@ -74,21 +74,21 @@ compatibility spelling.
   needed to move the machine toward expected state.
 - `init --dry-run` prints the directory and sparsebundle creation plan.
 - `mount --dry-run`, `unmount --dry-run`, and `install-shims --dry-run` print
-  planned actions without changing the system.
+  planned actions without changing system state.
 - `daemon install --dry-run` and `launchd install --dry-run` print the
-  root-owned LaunchDaemon helper install plan without writing into `/Library`.
-- `native install --dry-run` prints the APFS sparsebundle creation, backup,
-  mount, and launchd plan for transparent Apple default paths.
-- Native mode never creates symlinks for Apple paths. Symlinked managed paths
-  are invalid and must be replaced by real directories used as APFS mountpoints.
-- Shims are opt-in through `install-shims`.
+  root-owned LaunchDaemon/helper install plan without writing into `/Library`.
+- `mounts install --dry-run` prints APFS sparsebundle creation, backup, mount,
+  and launchd actions for transparent Apple default paths.
+- `mounts install` never creates symlinks at Apple paths. Symlinked managed
+  paths are invalid and must be replaced by real directories used as APFS
+  mountpoints.
 - Backup deletion is never an implicit repair action.
-- Simulator first boot uses a long timeout because recent iOS runtimes can spend
+- Simulator first boot uses a long timeout because recent iOS runtimes spend
   many minutes in first-boot data migration.
 
 ## Setup
 
-Choose the external storage root explicitly. The tool never defaults to a
+Choose an external storage root explicitly. The tool never defaults to a
 machine-specific volume:
 
 ```sh
@@ -125,7 +125,7 @@ sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 ```
 
 After one privileged install, normal `xcode-storage`, `xcrun`, `simctl`, and
-`xcodebuild` usage should run as the user. Use `sudo` again only when
+`xcodebuild` usage should run as your user. Use `sudo` again only when
 reinstalling, unloading, or changing the system LaunchDaemon/helper.
 
 Verify:
@@ -134,10 +134,10 @@ Verify:
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
 ```
 
-## Native Transparent Mode
+## APFS Mount Manager
 
-Native mode makes default Apple tools see regular Apple paths backed by mounted
-APFS sparsebundles. It does not rely on symlinks.
+The mount manager makes default Apple tools see regular Apple paths backed by
+mounted APFS sparsebundles. It does not rely on symlinks.
 
 Managed paths include:
 
@@ -150,25 +150,25 @@ Managed paths include:
 /Library/Developer/CoreSimulator/Volumes
 ```
 
-Install user-owned native mountpoints:
+Install user-owned mountpoints:
 
 ```sh
-xcode-storage native install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
+xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
 ```
 
-Install root-owned native mountpoints once:
+Install root-owned mountpoints once:
 
 ```sh
-sudo xcode-storage native install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
 ```
 
 Check status:
 
 ```sh
-xcode-storage native status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
+xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
 ```
 
-`native status` verifies that each managed path:
+`mounts status` verifies each managed path:
 
 - is not a symlink
 - has a configured sparsebundle
@@ -177,18 +177,18 @@ xcode-storage native status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope 
 - has owners enabled
 - belongs to the configured sparsebundle backend reported by `hdiutil info`
 
-Native mode deliberately refuses symlinked Apple paths because CoreSimulator and
-`simdiskimaged` can reject symlinked mount parents. If a managed path already
-contains data, native mode backs it up under
-`$XCODE_STORAGE_ROOT/Xcode/Backups/native/<timestamp>/` before mounting. Backups
-are never deleted automatically.
+The mount manager deliberately refuses symlinked Apple paths because
+CoreSimulator and `simdiskimaged` can reject symlinked mount parents. If a
+managed path already contains data, it backs that data up under
+`$XCODE_STORAGE_ROOT/Xcode/Backups/mounts/<timestamp>/` before mounting.
+Backups are never deleted automatically.
 
 If a managed path is already mounted from a backend that is not the configured
-native sparsebundle, repair fails instead of detaching or replacing that mount.
-This protects unrelated mounts and catches partial or drifted storage setups.
+sparsebundle, repair fails instead of detaching or replacing that mount. This
+protects unrelated mounts and catches partial or drifted storage setups.
 
-After native mode is mounted, default Apple tools can use managed paths without
-shims:
+After the mount manager has mounted the Apple paths, default Apple tools can use
+those paths without shims:
 
 ```sh
 PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcrun simctl list devices available
@@ -196,7 +196,7 @@ PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version
 ```
 
 Shims remain available when automation wants explicit build flag rewriting and
-`TMPDIR` routing, but they are no longer the transparent storage mechanism.
+`TMPDIR` routing, but they are not the transparent storage mechanism.
 
 ## Launchd
 
@@ -221,7 +221,7 @@ sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 ```
 
 Pass `--home` when running through `sudo`; otherwise the tool targets
-`/var/root` for user-specific paths. Use `--no-load` when staging files without
+`/var/root` user-specific paths. Use `--no-load` when staging files without
 immediately bootstrapping the system LaunchDaemon:
 
 ```sh
@@ -236,10 +236,10 @@ Use `repair --dry-run` first:
 xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --install-shims --dry-run
 ```
 
-Run without `--dry-run` when the plan is correct. Add `--load` to reload
-generated launchd jobs after writing them. Use `--scope user` for
-non-privileged user LaunchAgent repair, and use explicit `--root` and `--home`
-when running privileged system repairs through `sudo`.
+Run without `--dry-run` when the plan is correct. Add `--load` to reload the
+generated jobs while writing them. Use `--scope user` for non-privileged user
+LaunchAgent repair, and use explicit `--root` and `--home` when running
+privileged system repairs through `sudo`.
 
 Recommended split install:
 
@@ -274,24 +274,24 @@ scripts/smoke-cli.sh
 scripts/check-release-artifact.sh
 ```
 
-Live machine certification can still be done manually with `doctor --strict`,
-but it is intentionally not part of regular GitHub Actions. Native mode includes
-a gated certification command for dedicated machines:
+Live machine verification can still be done manually with `doctor --strict`,
+but it is intentionally not part of regular GitHub Actions. The mount manager
+includes a gated verification command for dedicated machines:
 
 ```sh
-xcode-storage native certify \
-  --cert-root "/Volumes/YourExternalVolume/xcode-storage-cert" \
+xcode-storage mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
   --mode user
 
-sudo xcode-storage native certify \
-  --cert-root "/Volumes/YourExternalVolume/xcode-storage-cert" \
+sudo xcode-storage mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
   --mode system \
   --allow-system
 ```
 
 `--mode e2e` can recreate a disposable simulator only when
 `--allow-sim-delete` is set. `scripts/certify-native.sh` remains only as a
-compatibility wrapper around `xcode-storage native certify`.
+compatibility wrapper around `xcode-storage mounts verify`.
 
 ## Release
 
@@ -301,10 +301,10 @@ Prepare releases from GitHub Actions:
 gh workflow run prepare-release.yml
 ```
 
-The prepare workflow runs tests, updates and commits `CHANGELOG.md`, creates the
-next SemVer tag from Conventional Commits, builds a macOS arm64 tarball,
-verifies the SHA-256 checksum, and publishes a GitHub Release. The first release
-falls back to `v0.1.0` when no older release tag exists.
+The prepare workflow runs tests, updates and commits `CHANGELOG.md`, creates
+the next SemVer tag from Conventional Commits, builds the macOS arm64 tarball,
+verifies the SHA-256 checksum, and publishes a GitHub Release. The first
+release falls back to `v0.1.0` when no older release tag exists.
 
 Existing tags can also be released manually:
 
@@ -313,5 +313,5 @@ gh workflow run release.yml -f tag=v0.1.0
 ```
 
 The tag release workflow validates the SemVer tag, builds the artifact, verifies
-the checksum, uploads both files, and publishes a GitHub Release with generated
-release notes.
+the checksum, uploads both files, and publishes GitHub Release generated release
+notes.

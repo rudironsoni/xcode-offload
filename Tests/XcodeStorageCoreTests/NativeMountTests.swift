@@ -89,8 +89,8 @@ import Testing
     let report = NativeActions(runner: runner).status(config: config, scope: .user)
 
     #expect(!report.passed)
-    #expect(report.checks.contains { $0.status == .fail && $0.label == "Native derived-data mountpoint is not a symlink" })
-    #expect(report.checks.contains { $0.status == .fail && $0.label == "Native derived-data uses configured sparsebundle" })
+    #expect(report.checks.contains { $0.status == .fail && $0.label == "Mount derived-data mountpoint is not a symlink" })
+    #expect(report.checks.contains { $0.status == .fail && $0.label == "Mount derived-data uses configured sparsebundle" })
 }
 
 @Test func nativeLaunchdPlistsPassPlutilLintAndHelpersAvoidSymlinks() throws {
@@ -99,7 +99,7 @@ import Testing
 
     try assertPlistLintPasses(templates.userAgentPlist)
     try assertPlistLintPasses(templates.systemDaemonPlist)
-    #expect(templates.userAgentPlist.contains("<string>native</string>"))
+    #expect(templates.userAgentPlist.contains("<string>mounts</string>"))
     #expect(templates.systemHelper.contains("reject_symlink"))
     try assertZshSyntaxPasses(templates.systemHelper)
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Images"))
@@ -256,14 +256,14 @@ private func nativeHdiutilOutput(config: StorageConfig, only ids: Set<String>? =
 
 private func temporaryDirectory() throws -> String {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-native-test-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url.path
 }
 
 private func assertPlistLintPasses(_ plist: String) throws {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-native-test-\(UUID().uuidString).plist")
+        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString).plist")
     try plist.write(to: url, atomically: true, encoding: .utf8)
     defer {
         try? FileManager.default.removeItem(at: url)
@@ -280,7 +280,7 @@ private func assertPlistLintPasses(_ plist: String) throws {
 
 private func assertZshSyntaxPasses(_ script: String) throws {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-native-test-\(UUID().uuidString).zsh")
+        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString).zsh")
     try script.write(to: url, atomically: true, encoding: .utf8)
     defer {
         try? FileManager.default.removeItem(at: url)

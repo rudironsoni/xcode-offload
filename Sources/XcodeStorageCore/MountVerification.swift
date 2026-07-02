@@ -1,15 +1,15 @@
 import Darwin
 import Foundation
 
-public enum NativeCertificationMode: String, Codable, Sendable {
+public enum MountVerificationMode: String, Codable, Sendable {
     case user
     case system
     case e2e
 }
 
-public struct NativeCertificationOptions: Sendable {
-    public let mode: NativeCertificationMode
-    public let certRoot: String
+public struct MountVerificationOptions: Sendable {
+    public let mode: MountVerificationMode
+    public let scratchRoot: String
     public let home: String
     public let toolPath: String
     public let runtime: String?
@@ -20,8 +20,8 @@ public struct NativeCertificationOptions: Sendable {
     public let bootTimeoutSeconds: Int
 
     public init(
-        mode: NativeCertificationMode,
-        certRoot: String,
+        mode: MountVerificationMode,
+        scratchRoot: String,
         home: String,
         toolPath: String,
         runtime: String? = nil,
@@ -32,7 +32,7 @@ public struct NativeCertificationOptions: Sendable {
         bootTimeoutSeconds: Int = 1800
     ) {
         self.mode = mode
-        self.certRoot = certRoot
+        self.scratchRoot = scratchRoot
         self.home = home
         self.toolPath = toolPath
         self.runtime = runtime
@@ -44,7 +44,7 @@ public struct NativeCertificationOptions: Sendable {
     }
 }
 
-public struct NativeCertification {
+public struct MountVerification {
     private let runner: CommandRunning
     private let fileManager: FileManager
 
@@ -53,53 +53,53 @@ public struct NativeCertification {
         self.fileManager = fileManager
     }
 
-    public func run(options: NativeCertificationOptions, event: (String) -> Void) throws {
-        let certRoot = try validatedCertRoot(options.certRoot)
+    public func run(options: MountVerificationOptions, event: (String) -> Void) throws {
+        let scratchRoot = try validatedScratchRoot(options.scratchRoot)
         let runID = timestampWithPID()
-        let root = "\(certRoot)/xcode-storage-cert-\(runID)"
+        let root = "\(scratchRoot)/xcode-storage-verify-\(runID)"
         var cleanupCommands: [[String]] = []
         var primaryError: Error?
 
         try fileManager.createDirectory(atPath: root, withIntermediateDirectories: true)
 
-        event("==> certification mode: \(options.mode.rawValue)")
-        event("==> certification root: \(root)")
+        event("==> verification mode: \(options.mode.rawValue)")
+        event("==> scratch root: \(root)")
 
         do {
             switch options.mode {
             case .user:
                 let home = "\(root)/home"
-                try runTool(["native", "install", "--root", root, "--home", home, "--scope", "user", "--dry-run"], toolPath: options.toolPath, event: event)
-                cleanupCommands.append(["native", "uninstall", "--root", root, "--home", home, "--scope", "user"])
-                try runTool(["native", "install", "--root", root, "--home", home, "--scope", "user"], toolPath: options.toolPath, event: event)
-                try runTool(["native", "status", "--root", root, "--home", home, "--scope", "user", "--json"], toolPath: options.toolPath, event: event)
+                try runTool(["mounts", "install", "--root", root, "--home", home, "--scope", "user", "--dry-run"], toolPath: options.toolPath, event: event)
+                cleanupCommands.append(["mounts", "uninstall", "--root", root, "--home", home, "--scope", "user"])
+                try runTool(["mounts", "install", "--root", root, "--home", home, "--scope", "user"], toolPath: options.toolPath, event: event)
+                try runTool(["mounts", "status", "--root", root, "--home", home, "--scope", "user", "--json"], toolPath: options.toolPath, event: event)
                 try runTool(cleanupCommands.removeLast(), toolPath: options.toolPath, event: event)
 
             case .system:
                 guard options.allowSystem else {
-                    throw CommandError("system certification requires --allow-system or XCODE_STORAGE_CERT_ALLOW_SYSTEM=1", exitCode: 77)
+                    throw CommandError("system verification requires --allow-system or XCODE_STORAGE_VERIFY_ALLOW_SYSTEM=1", exitCode: 77)
                 }
                 guard geteuid() == 0 else {
-                    throw CommandError("system certification requires root", exitCode: 77)
+                    throw CommandError("system verification requires root", exitCode: 77)
                 }
-                try runTool(["native", "install", "--root", root, "--home", options.home, "--scope", "system", "--dry-run"], toolPath: options.toolPath, event: event)
-                cleanupCommands.append(["native", "uninstall", "--root", root, "--home", options.home, "--scope", "system", "--unload"])
-                try runTool(["native", "install", "--root", root, "--home", options.home, "--scope", "system", "--load"], toolPath: options.toolPath, event: event)
-                try runTool(["native", "status", "--root", root, "--home", options.home, "--scope", "system", "--json"], toolPath: options.toolPath, event: event)
+                try runTool(["mounts", "install", "--root", root, "--home", options.home, "--scope", "system", "--dry-run"], toolPath: options.toolPath, event: event)
+                cleanupCommands.append(["mounts", "uninstall", "--root", root, "--home", options.home, "--scope", "system", "--unload"])
+                try runTool(["mounts", "install", "--root", root, "--home", options.home, "--scope", "system", "--load"], toolPath: options.toolPath, event: event)
+                try runTool(["mounts", "status", "--root", root, "--home", options.home, "--scope", "system", "--json"], toolPath: options.toolPath, event: event)
                 try runTool(cleanupCommands.removeLast(), toolPath: options.toolPath, event: event)
 
             case .e2e:
                 guard options.allowSimDelete else {
-                    throw CommandError("e2e certification requires --allow-sim-delete or XCODE_STORAGE_CERT_ALLOW_SIM_DELETE=1", exitCode: 77)
+                    throw CommandError("e2e verification requires --allow-sim-delete or XCODE_STORAGE_VERIFY_ALLOW_SIM_DELETE=1", exitCode: 77)
                 }
-                cleanupCommands.append(["native", "uninstall", "--root", root, "--home", options.home, "--scope", "user", "--unload"])
-                try runTool(["native", "install", "--root", root, "--home", options.home, "--scope", "user", "--load"], toolPath: options.toolPath, event: event)
+                cleanupCommands.append(["mounts", "uninstall", "--root", root, "--home", options.home, "--scope", "user", "--unload"])
+                try runTool(["mounts", "install", "--root", root, "--home", options.home, "--scope", "user", "--load"], toolPath: options.toolPath, event: event)
                 try runCommand("/usr/bin/xcrun", ["simctl", "list", "runtimes"], environment: defaultAppleToolEnvironment, event: event)
                 try runCommand("/usr/bin/xcrun", ["simctl", "list", "devices", "available"], environment: defaultAppleToolEnvironment, event: event)
                 try runCommand("/usr/bin/xcodebuild", ["-version"], environment: defaultAppleToolEnvironment, event: event)
                 if let runtime = options.runtime, !runtime.isEmpty,
                    let deviceType = options.deviceType, !deviceType.isEmpty {
-                    let name = "xcode-storage-cert-\(runID)"
+                    let name = "xcode-storage-verify-\(runID)"
                     try runTool([
                         "sim", "recreate",
                         "--name", name,
@@ -121,9 +121,9 @@ public struct NativeCertification {
         }
 
         if options.keepArtifacts {
-            event("==> keeping certification artifacts at \(root)")
+            event("==> keeping verification artifacts at \(root)")
         } else {
-            event("==> cleaning certification artifacts at \(root)")
+            event("==> cleaning verification artifacts at \(root)")
             do {
                 try fileManager.removeItem(atPath: root)
             } catch where primaryError == nil {
@@ -137,7 +137,7 @@ public struct NativeCertification {
             throw primaryError
         }
 
-        event("==> native certification passed")
+        event("==> mount verification passed")
     }
 
     private var defaultAppleToolEnvironment: [String: String] {
@@ -158,7 +158,7 @@ public struct NativeCertification {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .joined(separator: "\n")
-            throw CommandError(detail.isEmpty ? "certification command failed: \(executable)" : detail, exitCode: result.exitCode)
+            throw CommandError(detail.isEmpty ? "verification command failed: \(executable)" : detail, exitCode: result.exitCode)
         }
     }
 
@@ -169,11 +169,11 @@ public struct NativeCertification {
         output.split(separator: "\n", omittingEmptySubsequences: false).map(String.init).forEach(event)
     }
 
-    private func validatedCertRoot(_ path: String) throws -> String {
+    private func validatedScratchRoot(_ path: String) throws -> String {
         let normalized = URL(fileURLWithPath: path).standardizedFileURL.path
         let unsafe = ["/", "/Users", "/System", "/Library", "/Volumes"]
         guard !unsafe.contains(normalized) else {
-            throw CommandError("refusing unsafe certification root: \(normalized)", exitCode: 78)
+            throw CommandError("refusing unsafe scratch root: \(normalized)", exitCode: 78)
         }
         return normalized
     }

@@ -1,10 +1,10 @@
-name: Native Certification
+name: Mount Verification
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Certification mode: user, system, or e2e"
+        description: "Verification mode: user, system, or e2e"
         required: true
         default: user
         type: choice
@@ -12,8 +12,8 @@ on:
           - user
           - system
           - e2e
-      cert_root:
-        description: "Dedicated certification root on a writable external volume"
+      scratch_root:
+        description: "Dedicated scratch root on a writable external volume"
         required: true
         type: string
       runtime:
@@ -25,7 +25,7 @@ on:
         required: false
         type: string
       keep_artifacts:
-        description: "Keep certification artifacts on the runner"
+        description: "Keep verification artifacts on the runner"
         required: false
         default: false
         type: boolean
@@ -34,8 +34,8 @@ permissions:
   contents: read
 
 jobs:
-  certify:
-    name: Native Certification
+  verify:
+    name: Mount Verification
     runs-on: [self-hosted, macOS]
     steps:
       - name: Checkout
@@ -46,16 +46,16 @@ jobs:
       - name: Build
         run: swift build
 
-      - name: Certify native mode
+      - name: Verify mounts
         env:
-          XCODE_STORAGE_CERT_KEEP_ARTIFACTS: ${{ inputs.keep_artifacts }}
+          XCODE_STORAGE_VERIFY_KEEP_ARTIFACTS: ${{ inputs.keep_artifacts }}
         run: |
           args=(
             ".build/debug/xcode-storage"
-            "native"
-            "certify"
-            "--cert-root"
-            "${{ inputs.cert_root }}"
+            "mounts"
+            "verify"
+            "--scratch-root"
+            "${{ inputs.scratch_root }}"
             "--mode"
             "${{ inputs.mode }}"
           )
