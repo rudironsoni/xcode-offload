@@ -19,6 +19,25 @@ import Testing
     #expect(plan == ["already mounted /Users/rudi/Library/Developer/CoreSimulator/Devices"])
 }
 
+@Test func mountRequiresSparsebundleOutsideDryRun() {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let actions = StorageActions(runner: StubRunner(results: [:]))
+
+    #expect(throws: CommandError.self) {
+        _ = try actions.mount(.devices, config: config, dryRun: false)
+    }
+}
+
+@Test func mountDryRunAllowsMissingSparsebundle() throws {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let actions = StorageActions(runner: StubRunner(results: [:]))
+
+    let plan = try actions.mount(.devices, config: config, dryRun: true)
+
+    #expect(plan.contains("mkdir -p /Users/rudi/Library/Developer/CoreSimulator"))
+    #expect(plan.contains("/usr/bin/hdiutil attach /Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle -mountpoint /Users/rudi/Library/Developer/CoreSimulator/Devices -nobrowse -owners on"))
+}
+
 @Test func systemLaunchdInstallRequiresRootOutsideDryRun() {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
     let actions = StorageActions(runner: StubRunner(results: [:]))
@@ -32,6 +51,39 @@ import Testing
             dryRun: false
         )
     }
+}
+
+@Test func userLaunchdInstallPlanDoesNotRequireRoot() throws {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let actions = StorageActions(runner: StubRunner(results: [:]))
+
+    let plan = try actions.installLaunchd(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-storage",
+        scope: .user,
+        load: true,
+        dryRun: true
+    )
+
+    #expect(plan.contains("write /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
+    #expect(plan.contains("launchctl bootstrap gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
+}
+
+@Test func uninstallLaunchdDryRunPlansBothScopes() throws {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let actions = StorageActions(runner: StubRunner(results: [:]))
+
+    let plan = try actions.uninstallLaunchd(
+        config: config,
+        scope: .all,
+        unload: true,
+        dryRun: true
+    )
+
+    #expect(plan.contains("launchctl bootout gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist || true"))
+    #expect(plan.contains("rm -f /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
+    #expect(plan.contains("launchctl bootout system /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist || true"))
+    #expect(plan.contains("rm -f /Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-coresimulator-caches"))
 }
 
 @Test func systemLaunchdDryRunCreatesPrivilegedTargetDirectories() throws {

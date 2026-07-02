@@ -99,6 +99,7 @@ public enum RootResolver {
         let volumeName = environment["XCODE_STORAGE_VOLUME_NAME"]
 
         if let volumeUUID,
+           !volumeUUID.isEmpty,
            let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", volumeUUID], environment: [:]),
            result.succeeded,
            let mountPoint = TextParsers.volumeMountPoint(fromDiskutilInfo: result.stdout),

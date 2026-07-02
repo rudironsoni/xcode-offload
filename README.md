@@ -194,6 +194,26 @@ reason about because only the system LaunchDaemon/helper step needs sudo.
 This repository is an initial product extraction from the shell proof in the
 dotfiles repository. It is not yet a Homebrew formula.
 
+## Reliability
+
+Reliability work is CI-only by default. Tests must not require sudo, a specific
+external volume, live mount mutation, launchd bootstrap, or destructive
+CoreSimulator device changes. Privileged and destructive paths should be covered
+with dry-run CLI smoke checks or stubbed Swift tests.
+
+Before merging a storage or release change, run:
+
+```sh
+sh -n scripts/*.sh
+swift test
+scripts/check-no-machine-defaults.sh
+scripts/smoke-cli.sh
+scripts/check-release-artifact.sh
+```
+
+Live machine certification can still be done manually with `doctor --strict`,
+but it is intentionally not part of GitHub Actions.
+
 ## Release
 
 Prepare releases from GitHub Actions:

@@ -36,3 +36,9 @@ jobs:
 
       - name: Smoke version command
         run: .build/debug/xcode-storage version
+
+      - name: Smoke CLI behavior
+        run: scripts/smoke-cli.sh
+
+      - name: Smoke release artifact
+        run: scripts/check-release-artifact.sh

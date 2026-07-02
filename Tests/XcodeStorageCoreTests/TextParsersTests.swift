@@ -15,6 +15,20 @@ import Testing
     #expect(line == "/dev/disk11s1 on /Library/Developer/CoreSimulator/Caches (apfs, local, nodev, nosuid, journaled, nobrowse)")
 }
 
+@Test func mountLineHandlesSpacesAndPrefixCollisions() {
+    let output = """
+    /dev/disk1s1 on /Volumes/My Disk/DevicesBackup (apfs, local)
+    /dev/disk2s1 on /Volumes/My Disk/Devices (apfs, local, nobrowse)
+    """
+
+    let line = TextParsers.mountLine(
+        for: "/Volumes/My Disk/Devices",
+        in: output
+    )
+
+    #expect(line == "/dev/disk2s1 on /Volumes/My Disk/Devices (apfs, local, nobrowse)")
+}
+
 @Test func diskutilParsersTrimValues() {
     let output = """
        Volume Name:              XcodeSimulatorDevicesAPFS
@@ -26,6 +40,15 @@ import Testing
     #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == "/Volumes/ExternalXcode")
     #expect(TextParsers.fileSystemPersonality(fromDiskutilInfo: output) == "APFS")
     #expect(TextParsers.isAPFS(fromDiskutilInfo: output))
+}
+
+@Test func diskutilParserReportsMissingValues() {
+    let output = "   Device Identifier:        disk7s1\n"
+
+    #expect(TextParsers.volumeName(fromDiskutilInfo: output) == nil)
+    #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == nil)
+    #expect(TextParsers.fileSystemPersonality(fromDiskutilInfo: output) == nil)
+    #expect(!TextParsers.isAPFS(fromDiskutilInfo: output))
 }
 
 @Test func launchctlLastExitParserFindsStatus() {
@@ -57,4 +80,5 @@ import Testing
     #expect("/Volumes/ExternalXcode/Xcode".shellQuoted == "/Volumes/ExternalXcode/Xcode")
     #expect("/Volumes/My Disk/Xcode".shellQuoted == "'/Volumes/My Disk/Xcode'")
     #expect("Rudi's Disk".shellQuoted == "'Rudi'\\''s Disk'")
+    #expect("".shellQuoted == "''")
 }
