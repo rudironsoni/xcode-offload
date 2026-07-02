@@ -167,6 +167,9 @@ public struct StorageActions {
         }
 
         if scope == .system || scope == .all {
+            let helperDirectory = URL(fileURLWithPath: config.cacheHelperPath).deletingLastPathComponent().path
+            let daemonDirectory = URL(fileURLWithPath: config.systemLaunchDaemonPath).deletingLastPathComponent().path
+            actions.append("mkdir -p \(helperDirectory.shellQuoted) \(daemonDirectory.shellQuoted)")
             actions.append("write \(config.cacheHelperPath.shellQuoted)")
             actions.append("chown root:wheel \(config.cacheHelperPath.shellQuoted)")
             actions.append("chmod 0755 \(config.cacheHelperPath.shellQuoted)")
@@ -176,6 +179,8 @@ public struct StorageActions {
 
             if !dryRun {
                 try validatePlist(templates.systemDaemonPlist, name: "system LaunchDaemon")
+                try fileManager.createDirectory(atPath: helperDirectory, withIntermediateDirectories: true)
+                try fileManager.createDirectory(atPath: daemonDirectory, withIntermediateDirectories: true)
                 try templates.cacheMountHelper.write(toFile: config.cacheHelperPath, atomically: true, encoding: .utf8)
                 try templates.systemDaemonPlist.write(toFile: config.systemLaunchDaemonPath, atomically: true, encoding: .utf8)
                 try runOrThrow(["/usr/sbin/chown", "root:wheel", config.cacheHelperPath])

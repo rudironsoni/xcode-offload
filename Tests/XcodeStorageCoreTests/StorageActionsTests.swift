@@ -34,6 +34,21 @@ import Testing
     }
 }
 
+@Test func systemLaunchdDryRunCreatesPrivilegedTargetDirectories() throws {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let actions = StorageActions(runner: StubRunner(results: [:]))
+
+    let plan = try actions.installLaunchd(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-storage",
+        scope: .system,
+        load: false,
+        dryRun: true
+    )
+
+    #expect(plan.contains("mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons"))
+}
+
 private struct StubRunner: CommandRunning {
     let results: [String: ProcessResult]
 
