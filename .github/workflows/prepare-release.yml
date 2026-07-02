@@ -2,42 +2,23 @@ name: Prepare Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version, for example v0.1.0"
-        required: true
-        type: string
 
 permissions:
-  actions: write
   contents: write
 
 jobs:
   prepare-release:
-    name: Prepare Release
+    name: Prepare and Publish Release
     runs-on: macos-15
     steps:
       - name: Checkout main
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.0
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Validate SemVer version
-        id: semver
-        uses: matt-usurp/validate-semver@v3
-        with:
-          version: ${{ inputs.version }}
-
-      - name: Prepare release variables
-        id: release
-        run: |
-          tag="v${{ steps.semver.outputs.version }}"
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            echo "Tag already exists: $tag" >&2
-            exit 1
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Validate scripts
+        run: sh -n scripts/*.sh
 
       - name: Test
         run: swift test
@@ -45,38 +26,51 @@ jobs:
       - name: Guard against machine-specific defaults
         run: scripts/check-no-machine-defaults.sh
 
-      - name: Generate changelog
-        run: scripts/generate-changelog.sh "${{ steps.release.outputs.tag }}"
-
-      - name: Require changelog change
-        run: |
-          if git diff --quiet -- CHANGELOG.md; then
-            echo "CHANGELOG.md did not change for ${{ steps.release.outputs.tag }}" >&2
-            exit 1
-          fi
-
-      - name: Commit changelog
+      - name: Update changelog and tag release
         id: changelog
-        uses: EndBug/add-and-commit@v10
+        uses: TriPSs/conventional-changelog-action@v6.3.1
         with:
-          add: CHANGELOG.md
-          default_author: github_actions
-          message: "docs: update changelog for ${{ steps.release.outputs.tag }}"
+          github-token: ${{ github.token }}
+          git-branch: main
+          git-message: "docs: update changelog for {version}"
+          git-user-name: github-actions[bot]
+          git-user-email: 41898282+github-actions[bot]@users.noreply.github.com
+          preset: conventionalcommits
+          input-file: CHANGELOG.md
+          output-file: CHANGELOG.md
+          fallback-version: "0.1.0"
+          skip-version-file: "true"
+          skip-ci: "false"
+          create-summary: "true"
 
-      - name: Create release tag
-        env:
-          TAG: ${{ steps.release.outputs.tag }}
-          COMMIT: ${{ steps.changelog.outputs.commit_long_sha }}
+      - name: Require release changes
+        if: steps.changelog.outputs.skipped == 'true'
         run: |
-          if [ -z "$COMMIT" ]; then
-            echo "Missing changelog commit SHA" >&2
-            exit 1
-          fi
-          git tag -a "$TAG" -m "Release $TAG" "$COMMIT"
-          git push origin "$TAG"
+          echo "No conventional commits found for a release." >&2
+          exit 1
 
-      - name: Dispatch release workflow
+      - name: Build release artifact
+        id: build
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag }}
-        run: gh workflow run release.yml --ref "$TAG"
+          GITHUB_REF_NAME: ${{ steps.changelog.outputs.tag }}
+          XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
+        run: |
+          archive="$(scripts/build-release.sh)"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum=$archive.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Verify checksum
+        env:
+          CHECKSUM: ${{ steps.build.outputs.checksum }}
+        run: shasum -a 256 -c "$CHECKSUM"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3.0.1
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          files: |
+            ${{ steps.build.outputs.archive }}
+            ${{ steps.build.outputs.checksum }}
+          fail_on_unmatched_files: true

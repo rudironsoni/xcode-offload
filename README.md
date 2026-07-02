@@ -199,20 +199,20 @@ dotfiles repository. It is not yet a Homebrew formula.
 Prepare releases from GitHub Actions:
 
 ```sh
-gh workflow run prepare-release.yml -f version=v0.1.0
+gh workflow run prepare-release.yml
 ```
 
-The prepare workflow validates the SemVer version, runs tests, updates and
-commits `CHANGELOG.md`, creates the annotated tag, and dispatches the release
-workflow for that tag.
+The prepare workflow runs tests, updates and commits `CHANGELOG.md`, creates the
+next SemVer tag from Conventional Commits, builds the macOS arm64 tarball,
+verifies the SHA-256 checksum, and publishes the GitHub Release. The first
+release falls back to `v0.1.0` when no older release tag exists.
 
-Tags can also be pushed manually:
+Existing tags can also be released manually:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+gh workflow run release.yml -f tag=v0.1.0
 ```
 
-The tag release workflow builds a macOS arm64 tarball, generates release notes
-from the git log, uploads the artifact and SHA-256 checksum, and publishes a
-GitHub Release.
+The tag release workflow validates the SemVer tag, builds the artifact, verifies
+the checksum, uploads both files, and publishes the GitHub Release with generated
+release notes.
