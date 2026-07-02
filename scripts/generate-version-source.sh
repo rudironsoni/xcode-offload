@@ -9,7 +9,8 @@ if [ -z "$tag" ]; then
   tag="$(git describe --tags --exact-match 2>/dev/null || true)"
 fi
 
-if printf '%s' "$tag" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+semver_pattern='^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+if printf '%s' "$tag" | grep -Eq "$semver_pattern"; then
   version="${tag#v}"
 else
   base="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
