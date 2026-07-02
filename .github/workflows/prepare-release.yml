@@ -1,0 +1,82 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: macos-15
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate SemVer version
+        id: semver
+        uses: matt-usurp/validate-semver@v3
+        with:
+          version: ${{ inputs.version }}
+
+      - name: Prepare release variables
+        id: release
+        run: |
+          tag="v${{ steps.semver.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag already exists: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: swift test
+
+      - name: Guard against machine-specific defaults
+        run: scripts/check-no-machine-defaults.sh
+
+      - name: Generate changelog
+        run: scripts/generate-changelog.sh "${{ steps.release.outputs.tag }}"
+
+      - name: Require changelog change
+        run: |
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "CHANGELOG.md did not change for ${{ steps.release.outputs.tag }}" >&2
+            exit 1
+          fi
+
+      - name: Commit changelog
+        id: changelog
+        uses: EndBug/add-and-commit@v10
+        with:
+          add: CHANGELOG.md
+          default_author: github_actions
+          message: "docs: update changelog for ${{ steps.release.outputs.tag }}"
+
+      - name: Create release tag
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          COMMIT: ${{ steps.changelog.outputs.commit_long_sha }}
+        run: |
+          if [ -z "$COMMIT" ]; then
+            echo "Missing changelog commit SHA" >&2
+            exit 1
+          fi
+          git tag -a "$TAG" -m "Release $TAG" "$COMMIT"
+          git push origin "$TAG"
+
+      - name: Dispatch release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: gh workflow run release.yml --ref "$TAG"

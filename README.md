@@ -196,13 +196,23 @@ dotfiles repository. It is not yet a Homebrew formula.
 
 ## Release
 
-Tagged releases are built by GitHub Actions:
+Prepare releases from GitHub Actions:
+
+```sh
+gh workflow run prepare-release.yml -f version=v0.1.0
+```
+
+The prepare workflow validates the SemVer version, runs tests, updates and
+commits `CHANGELOG.md`, creates the annotated tag, and dispatches the release
+workflow for that tag.
+
+Tags can also be pushed manually:
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow builds a macOS arm64 tarball, generates release notes from
-the git log, uploads the artifact and SHA-256 checksum, and publishes a GitHub
-Release.
+The tag release workflow builds a macOS arm64 tarball, generates release notes
+from the git log, uploads the artifact and SHA-256 checksum, and publishes a
+GitHub Release.

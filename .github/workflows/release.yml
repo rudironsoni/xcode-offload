@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -37,8 +38,8 @@ jobs:
       - name: Guard against machine-specific defaults
         run: scripts/check-no-machine-defaults.sh
 
-      - name: Generate changelog
-        run: scripts/generate-changelog.sh "$GITHUB_REF_NAME"
+      - name: Generate release notes
+        run: scripts/generate-changelog.sh --notes-only "$GITHUB_REF_NAME"
 
       - name: Create GitHub release
         env:

@@ -1,6 +1,12 @@
 #!/bin/sh
 set -eu
 
+notes_only=0
+if [ "${1:-}" = "--notes-only" ]; then
+  notes_only=1
+  shift
+fi
+
 tag="${1:-${GITHUB_REF_NAME:-}}"
 if [ -z "$tag" ]; then
   tag="Unreleased"
@@ -25,6 +31,10 @@ date_utc="$(date -u +%Y-%m-%d)"
   fi
   printf '\n'
 } > RELEASE_NOTES.md
+
+if [ "$notes_only" = "1" ]; then
+  exit 0
+fi
 
 if [ -f CHANGELOG.md ]; then
   tmp="$(mktemp)"
