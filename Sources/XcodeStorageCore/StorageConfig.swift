@@ -2,6 +2,7 @@ import Foundation
 
 public struct StorageConfig: Codable, Equatable, Sendable {
     public let root: String
+    public let home: String
     public let xcodeRoot: String
     public let coreSimulatorRoot: String
     public let deviceStoreImage: String
@@ -13,6 +14,11 @@ public struct StorageConfig: Codable, Equatable, Sendable {
     public let tmp: String
     public let shimDirectory: String
     public let apfsDeviceVolumeName: String
+    public let launchAgentLabel: String
+    public let launchDaemonLabel: String
+    public let cacheHelperPath: String
+    public let userLaunchAgentPath: String
+    public let systemLaunchDaemonPath: String
 
     public init(
         root: String,
@@ -25,6 +31,7 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         let xcodeRoot = "\(normalizedRoot)/Xcode"
 
         self.root = normalizedRoot
+        self.home = normalizedHome
         self.xcodeRoot = xcodeRoot
         self.coreSimulatorRoot = "\(xcodeRoot)/CoreSimulator"
         self.deviceStoreImage = "\(xcodeRoot)/CoreSimulator/DeviceSet.sparsebundle"
@@ -36,6 +43,11 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         self.tmp = "\(xcodeRoot)/tmp"
         self.shimDirectory = shimDirectory ?? "\(normalizedHome)/.local/bin"
         self.apfsDeviceVolumeName = apfsDeviceVolumeName
+        self.launchAgentLabel = "io.github.rudironsoni.xcode-storage.device-store"
+        self.launchDaemonLabel = "io.github.rudironsoni.xcode-storage.caches"
+        self.cacheHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-coresimulator-caches"
+        self.userLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"
+        self.systemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist"
     }
 
     public var xcrunShim: String {
@@ -74,25 +86,30 @@ public enum RootResolver {
         explicitRoot: String?,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         runner: CommandRunning = SystemCommandRunner()
-    ) -> String {
+    ) throws -> String {
         if let explicitRoot, !explicitRoot.isEmpty {
             return explicitRoot
         }
 
-        if let override = environment["EXTERNAL_SSD_ROOT_OVERRIDE"], !override.isEmpty {
-            return override
+        if let root = environment["XCODE_STORAGE_ROOT"], !root.isEmpty {
+            return root
         }
 
-        let volumeUUID = environment["EXTERNAL_SSD_VOLUME_UUID"] ?? "F0F5B9A5-419F-4937-A02F-7B08A3AB06AF"
-        let volumeName = environment["EXTERNAL_SSD_VOLUME_NAME"] ?? "1TB"
+        let volumeUUID = environment["XCODE_STORAGE_VOLUME_UUID"]
+        let volumeName = environment["XCODE_STORAGE_VOLUME_NAME"]
 
-        if let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", volumeUUID], environment: [:]),
+        if let volumeUUID,
+           let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", volumeUUID], environment: [:]),
            result.succeeded,
            let mountPoint = TextParsers.volumeMountPoint(fromDiskutilInfo: result.stdout),
            !mountPoint.isEmpty {
             return mountPoint
         }
 
-        return "/Volumes/\(volumeName)"
+        if let volumeName, !volumeName.isEmpty {
+            return "/Volumes/\(volumeName)"
+        }
+
+        throw CommandError("missing storage root. Pass --root PATH or set XCODE_STORAGE_ROOT.", exitCode: 78)
     }
 }

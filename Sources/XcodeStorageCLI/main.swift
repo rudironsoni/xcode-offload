@@ -38,6 +38,10 @@ struct CLI {
             try unmount(arguments: &arguments)
         case "install-shims":
             try installShims(arguments: &arguments)
+        case "install-launchd":
+            try installLaunchd(arguments: &arguments)
+        case "uninstall-launchd":
+            try uninstallLaunchd(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
         case "wrap-xcrun":
@@ -52,7 +56,7 @@ struct CLI {
     }
 
     private func doctor(arguments: inout Arguments) throws {
-        let config = makeConfig(arguments: &arguments)
+        let config = try makeConfig(arguments: &arguments)
         let json = arguments.popFlag("--json")
         let requireShims = arguments.popFlag("--require-shims")
         let skipSimctl = arguments.popFlag("--skip-simctl")
@@ -82,7 +86,7 @@ struct CLI {
     }
 
     private func initialize(arguments: inout Arguments) throws {
-        let config = makeConfig(arguments: &arguments)
+        let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
         let createImages = !arguments.popFlag("--no-create-images")
         try arguments.rejectUnknown()
@@ -95,7 +99,7 @@ struct CLI {
 
     private func mount(arguments: inout Arguments) throws {
         let kind = try mountKind(arguments.popCommand())
-        let config = makeConfig(arguments: &arguments)
+        let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
         try arguments.rejectUnknown()
 
@@ -105,7 +109,7 @@ struct CLI {
 
     private func unmount(arguments: inout Arguments) throws {
         let kind = try mountKind(arguments.popCommand())
-        let config = makeConfig(arguments: &arguments)
+        let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
         try arguments.rejectUnknown()
 
@@ -114,13 +118,47 @@ struct CLI {
     }
 
     private func installShims(arguments: inout Arguments) throws {
-        let toolPath = arguments.popOption("--tool-path") ?? "/usr/bin/env xcode-storage"
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let explicitShimDir = arguments.popOption("--shim-dir")
         let dryRun = arguments.popFlag("--dry-run")
-        let config = makeConfig(arguments: &arguments, explicitShimDir: explicitShimDir)
+        let config = try makeConfig(arguments: &arguments, explicitShimDir: explicitShimDir)
         try arguments.rejectUnknown()
 
         let actions = try StorageActions().installShims(config: config, toolPath: toolPath, dryRun: dryRun)
+        actions.forEach { print($0) }
+    }
+
+    private func installLaunchd(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = arguments.popFlag("--load")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try StorageActions().installLaunchd(
+            config: config,
+            toolPath: toolPath,
+            scope: scope,
+            load: load,
+            dryRun: dryRun
+        )
+        actions.forEach { print($0) }
+    }
+
+    private func uninstallLaunchd(arguments: inout Arguments) throws {
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let dryRun = arguments.popFlag("--dry-run")
+        let unload = arguments.popFlag("--unload")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try StorageActions().uninstallLaunchd(
+            config: config,
+            scope: scope,
+            unload: unload,
+            dryRun: dryRun
+        )
         actions.forEach { print($0) }
     }
 
@@ -159,7 +197,7 @@ struct CLI {
 
     private func wrapper(arguments: [String], kind: WrapperKind) throws {
         var mutable = Arguments(arguments)
-        let config = makeConfig(arguments: &mutable)
+        let config = try makeConfig(arguments: &mutable)
         let dryRun = ProcessInfo.processInfo.environment["XCODE_SHIM_DRY_RUN"] == "1"
         let runner = WrapperRunner()
 
@@ -180,10 +218,31 @@ struct CLI {
         return kind
     }
 
-    private func makeConfig(arguments: inout Arguments, explicitShimDir: String? = nil) -> StorageConfig {
+    private func launchdScope(_ value: String) throws -> LaunchdScope {
+        guard let scope = LaunchdScope(rawValue: value) else {
+            throw CommandError("expected launchd scope: user, system, or all", exitCode: 64)
+        }
+        return scope
+    }
+
+    private func makeConfig(arguments: inout Arguments, explicitShimDir: String? = nil) throws -> StorageConfig {
         let explicitRoot = arguments.popOption("--root")
-        let root = RootResolver.resolveRoot(explicitRoot: explicitRoot)
-        return StorageConfig(root: root, shimDirectory: explicitShimDir)
+        let explicitHome = arguments.popOption("--home")
+        let root = try RootResolver.resolveRoot(explicitRoot: explicitRoot)
+        return StorageConfig(root: root, home: explicitHome ?? NSHomeDirectory(), shimDirectory: explicitShimDir)
+    }
+
+    private func defaultToolPath() -> String {
+        if let executablePath = Bundle.main.executablePath {
+            return executablePath
+        }
+
+        let argument = CommandLine.arguments[0]
+        if argument.hasPrefix("/") {
+            return argument
+        }
+
+        return "\(FileManager.default.currentDirectoryPath)/\(argument)"
     }
 
     private func printHelp() {
@@ -197,6 +256,8 @@ struct CLI {
               xcode-storage mount devices|caches [--root PATH] [--dry-run]
               xcode-storage unmount devices|caches [--root PATH] [--dry-run]
               xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
+              xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
               xcode-storage sim devices [--all]
               xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]

@@ -18,11 +18,11 @@ import Testing
 @Test func diskutilParsersTrimValues() {
     let output = """
        Volume Name:              XcodeSimulatorDevicesAPFS
-       Mount Point:              /Volumes/1TB
+       Mount Point:              /Volumes/ExternalXcode
     """
 
     #expect(TextParsers.volumeName(fromDiskutilInfo: output) == "XcodeSimulatorDevicesAPFS")
-    #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == "/Volumes/1TB")
+    #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == "/Volumes/ExternalXcode")
 }
 
 @Test func connectionFailureParserMatchesCoreSimulatorErrors() {
@@ -32,7 +32,7 @@ import Testing
 }
 
 @Test func shellQuoteOnlyQuotesWhenNeeded() {
-    #expect("/Volumes/1TB/Xcode".shellQuoted == "/Volumes/1TB/Xcode")
+    #expect("/Volumes/ExternalXcode/Xcode".shellQuoted == "/Volumes/ExternalXcode/Xcode")
     #expect("/Volumes/My Disk/Xcode".shellQuoted == "'/Volumes/My Disk/Xcode'")
     #expect("Rudi's Disk".shellQuoted == "'Rudi'\\''s Disk'")
 }

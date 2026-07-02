@@ -5,7 +5,8 @@ state onto external storage without losing the normal Apple command surface.
 
 The first target is the workflow proven on Rudi's machine:
 
-- external Xcode root under `/Volumes/1TB/Xcode`
+- external Xcode root under a user-selected volume, for example
+  `$XCODE_STORAGE_ROOT/Xcode`
 - external `DerivedData`, package cache, temporary directory, logs, products,
   and result bundles
 - sparsebundle-backed CoreSimulator device store
@@ -32,6 +33,8 @@ xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
 xcode-storage mount devices|caches [--root PATH] [--dry-run]
 xcode-storage unmount devices|caches [--root PATH] [--dry-run]
 xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
+xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage sim runtimes
 xcode-storage sim devices [--all]
 xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
@@ -43,13 +46,33 @@ xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--b
 - `init --dry-run` prints the directory and sparsebundle creation plan.
 - `mount --dry-run`, `unmount --dry-run`, and `install-shims --dry-run` print
   planned actions without changing the system.
+- `install-launchd --dry-run` prints the LaunchAgent, LaunchDaemon, and helper
+  install plan without writing into `~/Library` or `/Library`.
 - Shims are opt-in through `install-shims`.
 - Backup deletion is not implemented as an implicit repair action.
 - Simulator first boot defaults to a long timeout because recent iOS runtimes can
   spend many minutes in first-boot data migration.
 
+## Launchd
+
+The user LaunchAgent keeps the CoreSimulator device store mounted:
+
+```sh
+xcode-storage install-launchd --scope user --root "$XCODE_STORAGE_ROOT" --load
+```
+
+The system LaunchDaemon installs a root-owned helper that keeps
+`/Library/Developer/CoreSimulator/Caches` mounted from the external cache
+sparsebundle:
+
+```sh
+sudo xcode-storage install-launchd --scope system --root "$XCODE_STORAGE_ROOT" --home "$HOME" --load
+```
+
+Pass `--home` when running through `sudo`; otherwise the tool will target
+`/var/root` for user-specific paths.
+
 ## Current Status
 
 This repository is an initial product extraction from the shell proof in the
-dotfiles repository. It is not yet a Homebrew formula and it does not yet install
-LaunchAgents or LaunchDaemons.
+dotfiles repository. It is not yet a Homebrew formula.

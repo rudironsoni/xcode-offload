@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public enum MountKind: String, Sendable {
@@ -109,6 +110,113 @@ public struct StorageActions {
             if !dryRun {
                 try template.body.write(toFile: path, atomically: true, encoding: .utf8)
                 try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path)
+            }
+        }
+
+        return actions
+    }
+
+    public func installLaunchd(
+        config: StorageConfig,
+        toolPath: String,
+        scope: LaunchdScope,
+        load: Bool,
+        dryRun: Bool
+    ) throws -> [String] {
+        let templates = LaunchdTemplates(config: config, toolPath: toolPath)
+        var actions: [String] = []
+
+        if scope == .user || scope == .all {
+            let agentDirectory = URL(fileURLWithPath: config.userLaunchAgentPath).deletingLastPathComponent().path
+            let logsDirectory = "\(config.home)/Library/Logs"
+            actions.append("mkdir -p \(agentDirectory.shellQuoted) \(logsDirectory.shellQuoted)")
+            actions.append("write \(config.userLaunchAgentPath.shellQuoted)")
+            actions.append("chmod 0644 \(config.userLaunchAgentPath.shellQuoted)")
+
+            if !dryRun {
+                try fileManager.createDirectory(atPath: agentDirectory, withIntermediateDirectories: true)
+                try fileManager.createDirectory(atPath: logsDirectory, withIntermediateDirectories: true)
+                try templates.userAgentPlist.write(toFile: config.userLaunchAgentPath, atomically: true, encoding: .utf8)
+                try fileManager.setAttributes([.posixPermissions: 0o644], ofItemAtPath: config.userLaunchAgentPath)
+            }
+
+            if load {
+                let uid = getuid()
+                actions.append("launchctl bootout gui/\(uid) \(config.userLaunchAgentPath.shellQuoted) || true")
+                actions.append("launchctl bootstrap gui/\(uid) \(config.userLaunchAgentPath.shellQuoted)")
+                if !dryRun {
+                    _ = try? runner.run("/bin/launchctl", arguments: ["bootout", "gui/\(uid)", config.userLaunchAgentPath], environment: [:])
+                    try runOrThrow(["/bin/launchctl", "bootstrap", "gui/\(uid)", config.userLaunchAgentPath])
+                }
+            }
+        }
+
+        if scope == .system || scope == .all {
+            actions.append("write \(config.cacheHelperPath.shellQuoted)")
+            actions.append("chown root:wheel \(config.cacheHelperPath.shellQuoted)")
+            actions.append("chmod 0755 \(config.cacheHelperPath.shellQuoted)")
+            actions.append("write \(config.systemLaunchDaemonPath.shellQuoted)")
+            actions.append("chown root:wheel \(config.systemLaunchDaemonPath.shellQuoted)")
+            actions.append("chmod 0644 \(config.systemLaunchDaemonPath.shellQuoted)")
+
+            if !dryRun {
+                try templates.cacheMountHelper.write(toFile: config.cacheHelperPath, atomically: true, encoding: .utf8)
+                try templates.systemDaemonPlist.write(toFile: config.systemLaunchDaemonPath, atomically: true, encoding: .utf8)
+                try runOrThrow(["/usr/sbin/chown", "root:wheel", config.cacheHelperPath])
+                try runOrThrow(["/bin/chmod", "0755", config.cacheHelperPath])
+                try runOrThrow(["/usr/sbin/chown", "root:wheel", config.systemLaunchDaemonPath])
+                try runOrThrow(["/bin/chmod", "0644", config.systemLaunchDaemonPath])
+            }
+
+            if load {
+                actions.append("launchctl bootout system \(config.systemLaunchDaemonPath.shellQuoted) || true")
+                actions.append("launchctl bootstrap system \(config.systemLaunchDaemonPath.shellQuoted)")
+                if !dryRun {
+                    _ = try? runner.run("/bin/launchctl", arguments: ["bootout", "system", config.systemLaunchDaemonPath], environment: [:])
+                    try runOrThrow(["/bin/launchctl", "bootstrap", "system", config.systemLaunchDaemonPath])
+                }
+            }
+        }
+
+        return actions
+    }
+
+    public func uninstallLaunchd(
+        config: StorageConfig,
+        scope: LaunchdScope,
+        unload: Bool,
+        dryRun: Bool
+    ) throws -> [String] {
+        var actions: [String] = []
+
+        if scope == .user || scope == .all {
+            if unload {
+                let uid = getuid()
+                actions.append("launchctl bootout gui/\(uid) \(config.userLaunchAgentPath.shellQuoted) || true")
+                if !dryRun {
+                    _ = try? runner.run("/bin/launchctl", arguments: ["bootout", "gui/\(uid)", config.userLaunchAgentPath], environment: [:])
+                }
+            }
+
+            actions.append("rm -f \(config.userLaunchAgentPath.shellQuoted)")
+            if !dryRun {
+                try? fileManager.removeItem(atPath: config.userLaunchAgentPath)
+            }
+        }
+
+        if scope == .system || scope == .all {
+            if unload {
+                actions.append("launchctl bootout system \(config.systemLaunchDaemonPath.shellQuoted) || true")
+                if !dryRun {
+                    _ = try? runner.run("/bin/launchctl", arguments: ["bootout", "system", config.systemLaunchDaemonPath], environment: [:])
+                }
+            }
+
+            actions.append("rm -f \(config.systemLaunchDaemonPath.shellQuoted)")
+            actions.append("rm -f \(config.cacheHelperPath.shellQuoted)")
+            if !dryRun {
+                try? fileManager.removeItem(atPath: config.systemLaunchDaemonPath)
+                try? fileManager.removeItem(atPath: config.cacheHelperPath)
             }
         }
 
