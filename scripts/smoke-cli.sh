@@ -6,10 +6,23 @@ if [ ! -x "$bin" ]; then
   swift build >/dev/null
 fi
 
-tmp="${TMPDIR:-/tmp}/xcode-storage-cli-smoke.$$"
+tmp_parent="${TMPDIR:-/tmp}"
+tmp_parent="${tmp_parent%/}"
+tmp="$tmp_parent/xcode-storage-cli-smoke.$$"
 rm -rf "$tmp"
 mkdir -p "$tmp"
 trap 'rm -rf "$tmp"' EXIT INT TERM
+
+require_output() {
+  description="$1"
+  expected="$2"
+  output="$3"
+  if ! printf '%s' "$output" | grep -F "$expected" >/dev/null; then
+    echo "missing expected output for $description: $expected" >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+}
 
 expect_failure() {
   if "$@" >"$tmp/stdout" 2>"$tmp/stderr"; then
@@ -27,14 +40,14 @@ grep -F "unknown command: definitely-not-a-command" "$tmp/stderr" >/dev/null
 expect_failure "$bin" sim recreate --name SmokeOnly --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-17
 grep -F "missing required option: --runtime" "$tmp/stderr" >/dev/null
 
-"$bin" init --root "$tmp/External Disk" --dry-run --no-create-images \
-  | grep -F "mkdir -p '$tmp/External Disk/Xcode'" >/dev/null
+output="$("$bin" init --root "$tmp/External Disk" --dry-run --no-create-images)"
+require_output "init dry-run" "mkdir -p '$tmp/External Disk/Xcode'" "$output"
 
-"$bin" daemon install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run \
-  | grep -F "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" >/dev/null
+output="$("$bin" daemon install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run)"
+require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$output"
 
-"$bin" launchd install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run \
-  | grep -F "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" >/dev/null
+output="$("$bin" launchd install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run)"
+require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$output"
 
 if "$bin" doctor --root "$tmp/missing-root" --skip-simctl --json >"$tmp/doctor.json" 2>"$tmp/doctor.err"; then
   echo "expected doctor to fail for missing root" >&2
@@ -46,4 +59,3 @@ ruby -rjson -e '
   checks = report.fetch("checks")
   abort "expected at least one failed doctor check" unless checks.any? { |check| check.fetch("status") == "FAIL" }
 ' "$tmp/doctor.json"
-
