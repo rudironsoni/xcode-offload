@@ -91,6 +91,7 @@ public struct NativeActions {
             checks.append(imageCheck(nativeMount))
             checks.append(mountCheck(nativeMount, mountOutput: mountOutput))
             checks.append(apfsCheck(nativeMount))
+            checks.append(ownersCheck(nativeMount))
             checks.append(backendCheck(nativeMount, hdiutilOutput: hdiutilOutput))
         }
 
@@ -235,18 +236,28 @@ public struct NativeActions {
             detach.map(\.shellQuoted).joined(separator: " ")
         ]
 
+        if isMounted(nativeMount.mountPoint) {
+            return ["already prepared \(nativeMount.mountPoint.shellQuoted)"]
+        }
+
         if dryRun || !fileManager.fileExists(atPath: nativeMount.imagePath) {
             return actions
         }
 
         try fileManager.createDirectory(atPath: tempMount, withIntermediateDirectories: true)
+        var attached = false
         defer {
+            if attached {
+                try? runOrThrow(detach)
+            }
             try? fileManager.removeItem(atPath: tempMount)
         }
         try runOrThrow(attach)
+        attached = true
         try fileManager.createDirectory(atPath: "\(tempMount)/mnt", withIntermediateDirectories: true)
         try runOrThrow(["/bin/chmod", "1777", "\(tempMount)/mnt"])
         try runOrThrow(detach)
+        attached = false
         return actions
     }
 
@@ -344,8 +355,19 @@ public struct NativeActions {
         return DoctorCheck(.pass, "Native \(nativeMount.id) filesystem is APFS")
     }
 
+    private func ownersCheck(_ nativeMount: NativeMount) -> DoctorCheck {
+        let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", nativeMount.mountPoint], environment: [:])
+        guard let result, result.succeeded else {
+            return DoctorCheck(.fail, "Native \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
+        }
+        if TextParsers.ownersEnabled(fromDiskutilInfo: result.stdout) == true {
+            return DoctorCheck(.pass, "Native \(nativeMount.id) owners are enabled")
+        }
+        return DoctorCheck(.fail, "Native \(nativeMount.id) owners are enabled", detail: nativeMount.mountPoint)
+    }
+
     private func backendCheck(_ nativeMount: NativeMount, hdiutilOutput: String) -> DoctorCheck {
-        if hdiutilOutput.contains(nativeMount.imagePath) {
+        if TextParsers.hdiutilInfoContains(imagePath: nativeMount.imagePath, mountPoint: nativeMount.mountPoint, in: hdiutilOutput) {
             return DoctorCheck(.pass, "Native \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)
         }
         return DoctorCheck(.fail, "Native \(nativeMount.id) uses configured sparsebundle", detail: nativeMount.imagePath)

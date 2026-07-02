@@ -76,12 +76,12 @@ import Testing
         ),
         "/usr/bin/hdiutil": ProcessResult(
             exitCode: 0,
-            stdout: "image-path      : \(config.deviceStoreImage)\n",
+            stdout: nativeHdiutilOutput(config: config, only: ["devices"]),
             stderr: ""
         ),
         "/usr/sbin/diskutil": ProcessResult(
             exitCode: 0,
-            stdout: "File System Personality:  APFS\n",
+            stdout: "File System Personality:  APFS\nOwners: Enabled\n",
             stderr: ""
         )
     ])
@@ -101,6 +101,7 @@ import Testing
     try assertPlistLintPasses(templates.systemDaemonPlist)
     #expect(templates.userAgentPlist.contains("<string>native</string>"))
     #expect(templates.systemHelper.contains("reject_symlink"))
+    try assertZshSyntaxPasses(templates.systemHelper)
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Images"))
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Volumes"))
     #expect(!templates.systemHelper.localizedCaseInsensitiveContains("ln -s"))
@@ -113,6 +114,32 @@ import Testing
     #expect(helper.contains("records='caches|/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle|/Library/Developer/CoreSimulator/Caches|0755|standard"))
     #expect(!helper.contains("'\\''/Volumes/External Xcode"))
     #expect(!helper.contains("|'/Volumes/External Xcode"))
+}
+
+@Test func nativeRepairSkipsImagesPreparationWhenAlreadyMounted() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createNativeFixture(config: config)
+
+    let runner = NativeStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: nativeMountOutput(config: config),
+            stderr: ""
+        )
+    ])
+
+    let actions = try NativeActions(runner: runner).repair(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-storage",
+        scope: .system,
+        load: false,
+        dryRun: true
+    )
+
+    #expect(actions.contains("already prepared /Library/Developer/CoreSimulator/Images"))
+    #expect(!actions.contains { $0.contains("/tmp/xcode-storage-images-") && $0.contains("hdiutil attach") })
 }
 
 private struct NativeStubRunner: CommandRunning {
@@ -146,6 +173,18 @@ private func nativeMountOutput(config: StorageConfig) -> String {
         .joined(separator: "\n")
 }
 
+private func nativeHdiutilOutput(config: StorageConfig, only ids: Set<String>? = nil) -> String {
+    NativeMounts.all(config: config)
+        .filter { ids?.contains($0.id) ?? true }
+        .map { nativeMount in
+            """
+            image-path      : \(nativeMount.imagePath)
+            /dev/disk1s1\t41504653-0000-11AA-AA11-00306543ECAC\t\(nativeMount.mountPoint)
+            """
+        }
+        .joined(separator: "\n================================================\n")
+}
+
 private func temporaryDirectory() throws -> String {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("xcode-storage-native-test-\(UUID().uuidString)", isDirectory: true)
@@ -164,6 +203,23 @@ private func assertPlistLintPasses(_ plist: String) throws {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/plutil")
     process.arguments = ["-lint", url.path]
+    try process.run()
+    process.waitUntilExit()
+
+    #expect(process.terminationStatus == 0)
+}
+
+private func assertZshSyntaxPasses(_ script: String) throws {
+    let url = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("xcode-storage-native-test-\(UUID().uuidString).zsh")
+    try script.write(to: url, atomically: true, encoding: .utf8)
+    defer {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+    process.arguments = ["-n", url.path]
     try process.run()
     process.waitUntilExit()
 

@@ -1,24 +1,21 @@
 # xcode-storage
 
-`xcode-storage` is a macOS CLI for moving Xcode build state and CoreSimulator
-state onto external storage without losing the normal Apple command surface.
+`xcode-storage` is a macOS CLI for moving Xcode and CoreSimulator state onto
+external storage while preserving the normal Apple command surface.
 
-The first target is the workflow proven by the original extraction:
+The target workflow covers:
 
-- external Xcode root under a user-selected volume, for example
-  `$XCODE_STORAGE_ROOT/Xcode`
-- external `DerivedData`, package cache, temporary directory, logs, products,
-  and result bundles
-- sparsebundle-backed CoreSimulator device store
-- sparsebundle-backed CoreSimulator cache store
+- external Xcode state under a user-selected root, for example `$XCODE_STORAGE_ROOT/Xcode`
+- external `DerivedData`, package cache, temporary directory, logs, products, result bundles
+- sparsebundle-backed CoreSimulator device and cache stores
 - native APFS sparsebundle mountpoints for transparent Apple default paths
-- optional shims for `xcrun`, `simctl`, and `xcodebuild`
-- doctor checks that validate the actual mount and command state
+- optional `xcrun`, `simctl`, and `xcodebuild` shims for explicit flag rewriting
+- doctor and certification checks that validate actual mount state
 
 This is intentionally separate from `xcodes`. `xcodes` manages Xcode versions
 and simulator runtimes. `xcode-storage` manages where developer state lives and
 how that state is mounted, repaired, and verified. A later `xcodes` integration
-should be diagnostic or delegate to this tool.
+should delegate storage diagnostics and repair to this tool.
 
 ## Build
 
@@ -30,8 +27,6 @@ swift build
 
 `xcode-storage` uses SemVer for releases. Release tags must start with `v`, for
 example `v0.1.0`.
-
-Development builds report git-derived metadata:
 
 ```sh
 xcode-storage version
@@ -65,39 +60,34 @@ xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--b
 ```
 
 `daemon install` and `launchd install` are equivalent product-facing commands
-for installing the system LaunchDaemon and root-owned cache helper. The older
+for installing the system LaunchDaemon and root-owned helper. The older
 `install-launchd --scope system` command remains available as a lower-level
 compatibility spelling.
 
 ## Safety Rules
 
 - `doctor` is read-mostly and exits non-zero when required state is missing.
-- `doctor --strict` also checks sparsebundle readability, APFS mounted
-  filesystems, cache sparsebundle provenance, launchd plist validity, and
-  launchd last exit status.
+- `doctor --strict` also checks sparsebundle readability, APFS filesystems,
+  sparsebundle provenance, launchd plist validity, and launchd last exit status.
 - `repair --dry-run` prints the init, mount, launchd, and optional shim actions
-  needed to bring a machine toward the expected state.
+  needed to move the machine toward expected state.
 - `init --dry-run` prints the directory and sparsebundle creation plan.
 - `mount --dry-run`, `unmount --dry-run`, and `install-shims --dry-run` print
   planned actions without changing the system.
 - `daemon install --dry-run` and `launchd install --dry-run` print the
-  root-owned LaunchDaemon and helper install plan without writing into
-  `/Library`.
+  root-owned LaunchDaemon helper install plan without writing into `/Library`.
 - `native install --dry-run` prints the APFS sparsebundle creation, backup,
-  mount, and launchd plan for transparent Apple default paths without writing
-  into `~/Library` or `/Library`.
+  mount, and launchd plan for transparent Apple default paths.
 - Native mode never creates symlinks for Apple paths. Symlinked managed paths
-  are invalid and must be replaced by real directories or APFS mountpoints.
-- `install-launchd --dry-run` prints the LaunchAgent, LaunchDaemon, and helper
-  install plan without writing into `~/Library` or `/Library`.
+  are invalid and must be replaced by real directories used as APFS mountpoints.
 - Shims are opt-in through `install-shims`.
-- Backup deletion is not implemented as an implicit repair action.
-- Simulator first boot defaults to a long timeout because recent iOS runtimes can
-  spend many minutes in first-boot data migration.
+- Backup deletion is never an implicit repair action.
+- Simulator first boot uses a long timeout because recent iOS runtimes can spend
+  many minutes in first-boot data migration.
 
 ## Setup
 
-Choose an external storage root explicitly. The tool never defaults to a
+Choose the external storage root explicitly. The tool never defaults to a
 machine-specific volume:
 
 ```sh
@@ -133,8 +123,8 @@ The equivalent launchd spelling is:
 sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 ```
 
-After that one privileged install, normal `xcode-storage`, `xcrun`, `simctl`,
-and `xcodebuild` usage should run as the user. Use `sudo` again only when
+After one privileged install, normal `xcode-storage`, `xcrun`, `simctl`, and
+`xcodebuild` usage should run as the user. Use `sudo` again only when
 reinstalling, unloading, or changing the system LaunchDaemon/helper.
 
 Verify:
@@ -177,22 +167,31 @@ Check status:
 xcode-storage native status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
 ```
 
+`native status` verifies that each managed path:
+
+- is not a symlink
+- has a configured sparsebundle
+- is mounted at the expected Apple path
+- is APFS
+- has owners enabled
+- belongs to the configured sparsebundle backend reported by `hdiutil info`
+
 Native mode deliberately refuses symlinked Apple paths because CoreSimulator and
 `simdiskimaged` can reject symlinked mount parents. If a managed path already
 contains data, native mode backs it up under
 `$XCODE_STORAGE_ROOT/Xcode/Backups/native/<timestamp>/` before mounting. Backups
 are never deleted automatically.
 
-After native mode is mounted, default Apple tools can use the managed paths
-without shims:
+After native mode is mounted, default Apple tools can use managed paths without
+shims:
 
 ```sh
 PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcrun simctl list devices available
 PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version
 ```
 
-Shims remain available for automation that wants explicit build flag rewriting
-and `TMPDIR` routing, but they are no longer the transparent storage mechanism.
+Shims remain available when automation wants explicit build flag rewriting and
+`TMPDIR` routing, but they are no longer the transparent storage mechanism.
 
 ## Launchd
 
@@ -216,11 +215,9 @@ sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 ```
 
-Pass `--home` when running through `sudo`; otherwise the tool will target
-`/var/root` for user-specific paths.
-
-Use `--no-load` when packaging or staging files without immediately bootstrapping
-the system LaunchDaemon:
+Pass `--home` when running through `sudo`; otherwise the tool targets
+`/var/root` for user-specific paths. Use `--no-load` when staging files without
+immediately bootstrapping the system LaunchDaemon:
 
 ```sh
 sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --no-load
@@ -234,10 +231,10 @@ Use `repair --dry-run` first:
 xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --install-shims --dry-run
 ```
 
-Then run without `--dry-run` when the plan is correct. Add `--load` to reload
-the generated launchd jobs after writing them. Use `--scope user` for
-non-privileged user LaunchAgent repair, and run with `sudo --preserve-env` or
-an explicit `--root`/`--home` for `--scope system` or `--scope all`.
+Run without `--dry-run` when the plan is correct. Add `--load` to reload
+generated launchd jobs after writing them. Use `--scope user` for
+non-privileged user LaunchAgent repair, and use explicit `--root` and `--home`
+when running privileged system repairs through `sudo`.
 
 Recommended split install:
 
@@ -247,22 +244,22 @@ sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
 ```
 
-`repair --scope all` is still supported, but the split install is easier to
-reason about because only the system LaunchDaemon/helper step needs sudo.
+`repair --scope all` is still supported, but split install is easier to reason
+about because only the system LaunchDaemon/helper step needs sudo.
 
 ## Current Status
 
-This repository is an initial product extraction from the shell proof in the
+This repository is the initial product extraction from the shell proof in the
 dotfiles repository. It is not yet a Homebrew formula.
 
 ## Reliability
 
 Reliability work is CI-only by default. Tests must not require sudo, a specific
-external volume, live mount mutation, launchd bootstrap, or destructive
-CoreSimulator device changes. Privileged and destructive paths should be covered
-with dry-run CLI smoke checks or stubbed Swift tests.
+external volume, live system mount mutation, launchd bootstrap, or destructive
+CoreSimulator device changes. Privileged destructive paths should be covered
+with dry-run CLI smoke checks and stubbed Swift tests.
 
-Before merging a storage or release change, run:
+Before merging a storage release change, run:
 
 ```sh
 sh -n scripts/*.sh
@@ -273,9 +270,8 @@ scripts/check-release-artifact.sh
 ```
 
 Live machine certification can still be done manually with `doctor --strict`,
-but it is intentionally not part of GitHub Actions.
-
-Native mode has a gated certification script for dedicated machines:
+but it is intentionally not part of regular GitHub Actions. Native mode includes
+a gated certification script for dedicated machines:
 
 ```sh
 XCODE_STORAGE_CERT_ROOT="/Volumes/YourExternalVolume/xcode-storage-cert" \
@@ -298,9 +294,9 @@ gh workflow run prepare-release.yml
 ```
 
 The prepare workflow runs tests, updates and commits `CHANGELOG.md`, creates the
-next SemVer tag from Conventional Commits, builds the macOS arm64 tarball,
-verifies the SHA-256 checksum, and publishes the GitHub Release. The first
-release falls back to `v0.1.0` when no older release tag exists.
+next SemVer tag from Conventional Commits, builds a macOS arm64 tarball,
+verifies the SHA-256 checksum, and publishes a GitHub Release. The first release
+falls back to `v0.1.0` when no older release tag exists.
 
 Existing tags can also be released manually:
 
@@ -309,5 +305,5 @@ gh workflow run release.yml -f tag=v0.1.0
 ```
 
 The tag release workflow validates the SemVer tag, builds the artifact, verifies
-the checksum, uploads both files, and publishes the GitHub Release with generated
+the checksum, uploads both files, and publishes a GitHub Release with generated
 release notes.

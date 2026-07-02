@@ -47,12 +47,14 @@ import Testing
        Volume Name:              XcodeSimulatorDevicesAPFS
        Mount Point:              /Volumes/ExternalXcode
        File System Personality:  APFS
+       Owners:                   Enabled
     """
 
     #expect(TextParsers.volumeName(fromDiskutilInfo: output) == "XcodeSimulatorDevicesAPFS")
     #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == "/Volumes/ExternalXcode")
     #expect(TextParsers.fileSystemPersonality(fromDiskutilInfo: output) == "APFS")
     #expect(TextParsers.isAPFS(fromDiskutilInfo: output))
+    #expect(TextParsers.ownersEnabled(fromDiskutilInfo: output) == true)
 }
 
 @Test func diskutilParserReportsMissingValues() {
@@ -62,6 +64,34 @@ import Testing
     #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == nil)
     #expect(TextParsers.fileSystemPersonality(fromDiskutilInfo: output) == nil)
     #expect(!TextParsers.isAPFS(fromDiskutilInfo: output))
+    #expect(TextParsers.ownersEnabled(fromDiskutilInfo: output) == nil)
+}
+
+@Test func diskutilOwnersParserDetectsDisabledOwners() {
+    let output = "   Owners:                    Disabled\n"
+
+    #expect(TextParsers.ownersEnabled(fromDiskutilInfo: output) == false)
+}
+
+@Test func hdiutilInfoRequiresImageAndMountPointInSameBlock() {
+    let output = """
+    image-path      : /Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle
+    /dev/disk7s1\t41504653-0000-11AA-AA11-00306543ECAC\t/Users/rudi/Library/Developer/CoreSimulator/Devices
+    ================================================
+    image-path      : /Volumes/ExternalXcode/Xcode/XcodeDefaults/DerivedData.sparsebundle
+    /dev/disk8s1\t41504653-0000-11AA-AA11-00306543ECAC\t/Users/rudi/Library/Developer/Xcode/DerivedData
+    """
+
+    #expect(TextParsers.hdiutilInfoContains(
+        imagePath: "/Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle",
+        mountPoint: "/Users/rudi/Library/Developer/CoreSimulator/Devices",
+        in: output
+    ))
+    #expect(!TextParsers.hdiutilInfoContains(
+        imagePath: "/Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle",
+        mountPoint: "/Users/rudi/Library/Developer/Xcode/DerivedData",
+        in: output
+    ))
 }
 
 @Test func launchctlLastExitParserFindsStatus() {

@@ -104,11 +104,18 @@ public struct NativeLaunchdTemplates {
           local image="$1"
           local tmp="/tmp/xcode-storage-images-$$"
           /bin/mkdir -p "$tmp"
-          /usr/bin/hdiutil attach "$image" -mountpoint "$tmp" -nobrowse -owners on >/dev/null
-          /bin/mkdir -p "$tmp/mnt"
-          /bin/chmod 1777 "$tmp/mnt"
-          /usr/bin/hdiutil detach "$tmp" >/dev/null
-          /bin/rmdir "$tmp" 2>/dev/null || true
+          local attached=0
+          {
+            /usr/bin/hdiutil attach "$image" -mountpoint "$tmp" -nobrowse -owners on >/dev/null
+            attached=1
+            /bin/mkdir -p "$tmp/mnt"
+            /bin/chmod 1777 "$tmp/mnt"
+          } always {
+            if [[ "$attached" == "1" ]]; then
+              /usr/bin/hdiutil detach "$tmp" >/dev/null 2>&1 || true
+            fi
+            /bin/rmdir "$tmp" 2>/dev/null || true
+          }
         }
 
         if [[ ! -d "$root" ]]; then

@@ -35,6 +35,28 @@ public enum TextParsers {
         return value.localizedCaseInsensitiveContains("apfs")
     }
 
+    public static func ownersEnabled(fromDiskutilInfo output: String) -> Bool? {
+        guard let value = value(forDiskutilKey: "Owners", in: output) else {
+            return nil
+        }
+        if value.localizedCaseInsensitiveContains("enabled") {
+            return true
+        }
+        if value.localizedCaseInsensitiveContains("disabled") {
+            return false
+        }
+        return nil
+    }
+
+    public static func hdiutilInfoContains(imagePath: String, mountPoint: String, in output: String) -> Bool {
+        output
+            .components(separatedBy: "================================================")
+            .contains { block in
+                value(forDiskutilKey: "image-path", in: block) == imagePath
+                    && hdiutilBlock(block, containsMountPoint: mountPoint)
+            }
+    }
+
     public static func launchctlLastExitStatus(from output: String) -> Int? {
         for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -89,6 +111,21 @@ public enum TextParsers {
             return nil
         }
         return String(line[onRange.upperBound..<optionsRange.lowerBound])
+    }
+
+    private static func hdiutilBlock(_ block: String, containsMountPoint mountPoint: String) -> Bool {
+        let expectedMountPaths = normalizedPathCandidates(for: mountPoint)
+        for line in block.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
+            let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard let mountedPath = fields.last?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  mountedPath.hasPrefix("/") else {
+                continue
+            }
+            if !expectedMountPaths.isDisjoint(with: normalizedPathCandidates(for: mountedPath)) {
+                return true
+            }
+        }
+        return false
     }
 
     private static func normalizedPathCandidates(for path: String) -> Set<String> {
