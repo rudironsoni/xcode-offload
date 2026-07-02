@@ -48,10 +48,30 @@ jobs:
 
       - name: Certify native mode
         env:
-          XCODE_STORAGE_CERT_ROOT: ${{ inputs.cert_root }}
-          XCODE_STORAGE_CERT_RUNTIME: ${{ inputs.runtime }}
-          XCODE_STORAGE_CERT_DEVICE_TYPE: ${{ inputs.device_type }}
           XCODE_STORAGE_CERT_KEEP_ARTIFACTS: ${{ inputs.keep_artifacts }}
-          XCODE_STORAGE_CERT_ALLOW_SYSTEM: ${{ inputs.mode == 'system' }}
-          XCODE_STORAGE_CERT_ALLOW_SIM_DELETE: ${{ inputs.mode == 'e2e' }}
-        run: scripts/certify-native.sh --mode "${{ inputs.mode }}"
+        run: |
+          args=(
+            ".build/debug/xcode-storage"
+            "native"
+            "certify"
+            "--cert-root"
+            "${{ inputs.cert_root }}"
+            "--mode"
+            "${{ inputs.mode }}"
+          )
+          if [ -n "${{ inputs.runtime }}" ]; then
+            args+=("--runtime" "${{ inputs.runtime }}")
+          fi
+          if [ -n "${{ inputs.device_type }}" ]; then
+            args+=("--device-type" "${{ inputs.device_type }}")
+          fi
+          if [ "${{ inputs.keep_artifacts }}" = "true" ]; then
+            args+=("--keep-artifacts")
+          fi
+          if [ "${{ inputs.mode }}" = "system" ]; then
+            args+=("--allow-system")
+          fi
+          if [ "${{ inputs.mode }}" = "e2e" ]; then
+            args+=("--allow-sim-delete")
+          fi
+          "${args[@]}"

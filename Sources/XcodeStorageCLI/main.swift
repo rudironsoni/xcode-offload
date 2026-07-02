@@ -232,6 +232,8 @@ struct CLI {
             try nativeUninstall(arguments: &arguments)
         case "status":
             try nativeStatus(arguments: &arguments)
+        case "certify":
+            try nativeCertify(arguments: &arguments)
         case "help", "-h", "--help":
             printNativeHelp()
         default:
@@ -299,6 +301,46 @@ struct CLI {
 
         if !report.passed {
             throw ExitRequested(code: 1)
+        }
+    }
+
+    private func nativeCertify(arguments: inout Arguments) throws {
+        let modeValue = arguments.popOption("--mode") ?? "user"
+        guard let mode = NativeCertificationMode(rawValue: modeValue) else {
+            throw CommandError("expected certification mode: user, system, or e2e", exitCode: 64)
+        }
+
+        let environment = ProcessInfo.processInfo.environment
+        let certRoot = arguments.popOption("--cert-root") ?? environment["XCODE_STORAGE_CERT_ROOT"]
+        guard let certRoot, !certRoot.isEmpty else {
+            throw CommandError("missing certification root. Pass --cert-root PATH or set XCODE_STORAGE_CERT_ROOT.", exitCode: 64)
+        }
+
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_CERT_HOME"] ?? certificationHome(environment: environment)
+        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_CERT_RUNTIME"]
+        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_CERT_DEVICE_TYPE"]
+        let keepArtifacts = arguments.popFlag("--keep-artifacts") || environmentFlag(environment["XCODE_STORAGE_CERT_KEEP_ARTIFACTS"])
+        let allowSystem = arguments.popFlag("--allow-system") || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SYSTEM"])
+        let allowSimDelete = arguments.popFlag("--allow-sim-delete") || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SIM_DELETE"])
+        let bootTimeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
+        try arguments.rejectUnknown()
+
+        let options = NativeCertificationOptions(
+            mode: mode,
+            certRoot: certRoot,
+            home: home,
+            toolPath: toolPath,
+            runtime: runtime,
+            deviceType: deviceType,
+            keepArtifacts: keepArtifacts,
+            allowSystem: allowSystem,
+            allowSimDelete: allowSimDelete,
+            bootTimeoutSeconds: bootTimeout
+        )
+
+        try NativeCertification().run(options: options) { event in
+            print(event)
         }
     }
 
@@ -402,6 +444,25 @@ struct CLI {
         return "\(FileManager.default.currentDirectoryPath)/\(argument)"
     }
 
+    private func certificationHome(environment: [String: String]) -> String {
+        if let sudoUser = environment["SUDO_USER"], !sudoUser.isEmpty {
+            return "/Users/\(sudoUser)"
+        }
+        return NSHomeDirectory()
+    }
+
+    private func environmentFlag(_ value: String?) -> Bool {
+        guard let value else {
+            return false
+        }
+        switch value {
+        case "1", "true", "TRUE", "yes", "YES":
+            return true
+        default:
+            return false
+        }
+    }
+
     private func printHelp() {
         print(
             """
@@ -420,6 +481,7 @@ struct CLI {
               xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
               xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
@@ -461,6 +523,7 @@ struct CLI {
               xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
             Native mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
             """

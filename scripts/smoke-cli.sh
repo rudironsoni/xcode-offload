@@ -40,6 +40,9 @@ grep -F "unknown command: definitely-not-a-command" "$tmp/stderr" >/dev/null
 expect_failure "$bin" sim recreate --name SmokeOnly --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-17
 grep -F "missing required option: --runtime" "$tmp/stderr" >/dev/null
 
+expect_failure "$bin" native certify --mode user
+grep -F "missing certification root" "$tmp/stderr" >/dev/null
+
 output="$("$bin" init --root "$tmp/External Disk" --dry-run --no-create-images)"
 require_output "init dry-run" "mkdir -p '$tmp/External Disk/Xcode'" "$output"
 

@@ -52,6 +52,7 @@ xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--s
 xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+xcode-storage native certify --cert-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage sim runtimes
@@ -275,19 +276,22 @@ scripts/check-release-artifact.sh
 
 Live machine certification can still be done manually with `doctor --strict`,
 but it is intentionally not part of regular GitHub Actions. Native mode includes
-a gated certification script for dedicated machines:
+a gated certification command for dedicated machines:
 
 ```sh
-XCODE_STORAGE_CERT_ROOT="/Volumes/YourExternalVolume/xcode-storage-cert" \
-  scripts/certify-native.sh --mode user
+xcode-storage native certify \
+  --cert-root "/Volumes/YourExternalVolume/xcode-storage-cert" \
+  --mode user
 
-sudo XCODE_STORAGE_CERT_ROOT="/Volumes/YourExternalVolume/xcode-storage-cert" \
-  XCODE_STORAGE_CERT_ALLOW_SYSTEM=1 \
-  scripts/certify-native.sh --mode system
+sudo xcode-storage native certify \
+  --cert-root "/Volumes/YourExternalVolume/xcode-storage-cert" \
+  --mode system \
+  --allow-system
 ```
 
 `--mode e2e` can recreate a disposable simulator only when
-`XCODE_STORAGE_CERT_ALLOW_SIM_DELETE=1` is set.
+`--allow-sim-delete` is set. `scripts/certify-native.sh` remains only as a
+compatibility wrapper around `xcode-storage native certify`.
 
 ## Release
 
