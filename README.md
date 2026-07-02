@@ -182,6 +182,10 @@ contains data, native mode backs it up under
 `$XCODE_STORAGE_ROOT/Xcode/Backups/native/<timestamp>/` before mounting. Backups
 are never deleted automatically.
 
+If a managed path is already mounted from a backend that is not the configured
+native sparsebundle, repair fails instead of detaching or replacing that mount.
+This protects unrelated mounts and catches partial or drifted storage setups.
+
 After native mode is mounted, default Apple tools can use managed paths without
 shims:
 

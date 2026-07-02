@@ -43,15 +43,11 @@ public struct NativeLaunchdTemplates {
 
     public var systemHelper: String {
         let mounts = NativeMounts.system(config: config)
-        let records = mounts.map { nativeMount in
-            [
-                nativeMount.id,
-                nativeMount.imagePath,
-                nativeMount.mountPoint,
-                nativeMount.requiredMode,
-                nativeMount.preparation.rawValue
-            ].joined(separator: "|")
-        }.joined(separator: "\n")
+        let ids = mounts.map(\.id).map(\.shellQuoted).joined(separator: " ")
+        let images = mounts.map(\.imagePath).map(\.shellQuoted).joined(separator: " ")
+        let mountpoints = mounts.map(\.mountPoint).map(\.shellQuoted).joined(separator: " ")
+        let modes = mounts.map(\.requiredMode).map(\.shellQuoted).joined(separator: " ")
+        let preparations = mounts.map(\.preparation.rawValue).map(\.shellQuoted).joined(separator: " ")
 
         return """
         #!/bin/zsh
@@ -59,7 +55,11 @@ public struct NativeLaunchdTemplates {
 
         root=\(config.root.shellQuoted)
         backup_root=\(config.nativeBackupRoot.shellQuoted)
-        records=\(records.shellQuoted)
+        ids=(\(ids))
+        images=(\(images))
+        mountpoints=(\(mountpoints))
+        modes=(\(modes))
+        preparations=(\(preparations))
 
         log() {
           echo "xcode-storage native system: $*" >&2
@@ -72,6 +72,33 @@ public struct NativeLaunchdTemplates {
 
         is_mounted() {
           /sbin/mount | /usr/bin/grep -F " on $1 " >/dev/null 2>&1
+        }
+
+        mounted_from_configured_backend() {
+          local image="$1"
+          local mountpoint="$2"
+          /usr/bin/hdiutil info | /usr/bin/awk -v image="$image" -v mountpoint="$mountpoint" '
+            /^=+$/ {
+              if (seen_image && seen_mount) {
+                found = 1
+              }
+              seen_image = 0
+              seen_mount = 0
+              next
+            }
+            index($0, "image-path") && index($0, image) {
+              seen_image = 1
+            }
+            index($0, mountpoint) {
+              seen_mount = 1
+            }
+            END {
+              if (seen_image && seen_mount) {
+                found = 1
+              }
+              exit(found ? 0 : 1)
+            }
+          '
         }
 
         reject_symlink() {
@@ -123,18 +150,26 @@ public struct NativeLaunchdTemplates {
           exit 0
         fi
 
-        while IFS='|' read -r id image mountpoint mode preparation; do
-          [[ -n "$id" ]] || continue
+        for index in {1..${#ids[@]}}; do
+          id="${ids[$index]}"
+          image="${images[$index]}"
+          mountpoint="${mountpoints[$index]}"
+          mode="${modes[$index]}"
+          preparation="${preparations[$index]}"
           [[ -e "$image" ]] || fail "missing sparsebundle: $image"
+          reject_symlink "$mountpoint"
           if is_mounted "$mountpoint"; then
-            continue
+            if mounted_from_configured_backend "$image" "$mountpoint"; then
+              continue
+            fi
+            fail "native mountpoint is already mounted from a different backend: $mountpoint"
           fi
           if [[ "$preparation" == "coreSimulatorImages" ]]; then
             prepare_images_sparsebundle "$image"
           fi
           prepare_mountpoint "$id" "$mountpoint" "$mode"
           /usr/bin/hdiutil attach "$image" -mountpoint "$mountpoint" -nobrowse -owners on
-        done <<< "$records"
+        done
         """
     }
 

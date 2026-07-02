@@ -111,9 +111,11 @@ import Testing
     let config = StorageConfig(root: "/Volumes/External Xcode", home: "/Users/rudi")
     let helper = NativeLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage").systemHelper
 
-    #expect(helper.contains("records='caches|/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle|/Library/Developer/CoreSimulator/Caches|0755|standard"))
-    #expect(!helper.contains("'\\''/Volumes/External Xcode"))
-    #expect(!helper.contains("|'/Volumes/External Xcode"))
+    #expect(helper.contains("images=('/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle'"))
+    #expect(helper.contains("mountpoints=(/Library/Developer/CoreSimulator/Caches"))
+    #expect(helper.contains("mounted_from_configured_backend"))
+    #expect(helper.contains("already mounted from a different backend"))
+    #expect(!helper.contains("IFS='|'"))
 }
 
 @Test func nativeRepairSkipsImagesPreparationWhenAlreadyMounted() throws {
@@ -140,6 +142,65 @@ import Testing
 
     #expect(actions.contains("already prepared /Library/Developer/CoreSimulator/Images"))
     #expect(!actions.contains { $0.contains("/tmp/xcode-storage-images-") && $0.contains("hdiutil attach") })
+}
+
+@Test func nativeInstallRejectsAlreadyMountedWrongBackend() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createNativeFixture(config: config)
+
+    let runner = NativeStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: "/dev/disk9s1 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled, nobrowse)",
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(
+            exitCode: 0,
+            stdout: nativeHdiutilOutput(config: config, only: ["derived-data"]),
+            stderr: ""
+        )
+    ])
+
+    #expect(throws: CommandError.self) {
+        _ = try NativeActions(runner: runner).install(
+            config: config,
+            toolPath: "/opt/homebrew/bin/xcode-storage",
+            scope: .user,
+            load: false,
+            dryRun: false
+        )
+    }
+}
+
+@Test func nativeUninstallRefusesToDetachWrongBackend() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createNativeFixture(config: config)
+
+    let runner = NativeStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: "/dev/disk9s1 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled, nobrowse)",
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(
+            exitCode: 0,
+            stdout: nativeHdiutilOutput(config: config, only: ["derived-data"]),
+            stderr: ""
+        )
+    ])
+
+    #expect(throws: CommandError.self) {
+        _ = try NativeActions(runner: runner).uninstall(
+            config: config,
+            scope: .user,
+            unload: false,
+            dryRun: false
+        )
+    }
 }
 
 private struct NativeStubRunner: CommandRunning {

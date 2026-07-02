@@ -140,11 +140,14 @@ public struct NativeActions {
     }
 
     private func mount(nativeMount: NativeMount, backupRoot: String, dryRun: Bool) throws -> [String] {
-        if isMounted(nativeMount.mountPoint) {
-            return ["already mounted \(nativeMount.mountPoint.shellQuoted)"]
-        }
-
         try rejectSymlink(nativeMount.mountPoint)
+
+        if isMounted(nativeMount.mountPoint) {
+            if dryRun || isMountedFromConfiguredBackend(nativeMount) {
+                return ["already mounted \(nativeMount.mountPoint.shellQuoted)"]
+            }
+            throw CommandError("native mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
+        }
 
         guard dryRun || fileManager.fileExists(atPath: nativeMount.imagePath) else {
             throw CommandError("missing sparsebundle: \(nativeMount.imagePath)", exitCode: 78)
@@ -171,6 +174,10 @@ public struct NativeActions {
     private func unmount(nativeMount: NativeMount, dryRun: Bool) throws -> [String] {
         if !isMounted(nativeMount.mountPoint) {
             return ["not mounted \(nativeMount.mountPoint.shellQuoted)"]
+        }
+
+        if !dryRun && !isMountedFromConfiguredBackend(nativeMount) {
+            throw CommandError("refusing to detach native mountpoint from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
         }
 
         let command = ["/usr/bin/hdiutil", "detach", nativeMount.mountPoint]
@@ -452,6 +459,17 @@ public struct NativeActions {
             return false
         }
         return TextParsers.mountLine(for: mountPoint, in: result.stdout) != nil
+    }
+
+    private func isMountedFromConfiguredBackend(_ nativeMount: NativeMount) -> Bool {
+        guard let result = try? runner.run("/usr/bin/hdiutil", arguments: ["info"], environment: [:]), result.succeeded else {
+            return false
+        }
+        return TextParsers.hdiutilInfoContains(
+            imagePath: nativeMount.imagePath,
+            mountPoint: nativeMount.mountPoint,
+            in: result.stdout
+        )
     }
 
     private func timestamp() -> String {
