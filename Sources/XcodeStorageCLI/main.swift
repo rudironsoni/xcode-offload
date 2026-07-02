@@ -27,7 +27,7 @@ struct CLI {
         case "help", "-h", "--help":
             printHelp()
         case "version", "--version":
-            print("xcode-storage 0.1.0")
+            print(Version.current.displayString)
         case "doctor":
             try doctor(arguments: &arguments)
         case "init":

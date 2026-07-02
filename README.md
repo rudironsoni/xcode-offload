@@ -3,7 +3,7 @@
 `xcode-storage` is a macOS CLI for moving Xcode build state and CoreSimulator
 state onto external storage without losing the normal Apple command surface.
 
-The first target is the workflow proven on Rudi's machine:
+The first target is the workflow proven by the original extraction:
 
 - external Xcode root under a user-selected volume, for example
   `$XCODE_STORAGE_ROOT/Xcode`
@@ -24,6 +24,20 @@ should be diagnostic or delegate to this tool.
 ```sh
 swift build
 ```
+
+## Versioning
+
+`xcode-storage` uses SemVer for releases. Release tags must start with `v`, for
+example `v0.1.0`.
+
+Development builds report git-derived metadata:
+
+```sh
+xcode-storage version
+```
+
+Release builds regenerate `GeneratedBuildMetadata.swift` from the tag before
+compilation, so a tagged `v0.1.0` build reports `0.1.0`.
 
 ## Commands
 
@@ -76,3 +90,16 @@ Pass `--home` when running through `sudo`; otherwise the tool will target
 
 This repository is an initial product extraction from the shell proof in the
 dotfiles repository. It is not yet a Homebrew formula.
+
+## Release
+
+Tagged releases are built by GitHub Actions:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow builds a macOS arm64 tarball, generates release notes from
+the git log, uploads the artifact and SHA-256 checksum, and publishes a GitHub
+Release.
