@@ -48,7 +48,7 @@ struct CLI {
             try daemon(arguments: &arguments)
         case "launchd":
             try launchd(arguments: &arguments)
-        case "mounts", "native":
+        case "mounts":
             try mounts(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
@@ -232,7 +232,7 @@ struct CLI {
             try mountsUninstall(arguments: &arguments)
         case "status":
             try mountsStatus(arguments: &arguments)
-        case "verify", "certify":
+        case "verify":
             try mountsVerify(arguments: &arguments)
         case "help", "-h", "--help":
             printMountsHelp()
@@ -312,26 +312,21 @@ struct CLI {
 
         let environment = ProcessInfo.processInfo.environment
         let scratchRoot = arguments.popOption("--scratch-root")
-            ?? arguments.popOption("--cert-root")
             ?? environment["XCODE_STORAGE_VERIFY_ROOT"]
-            ?? environment["XCODE_STORAGE_CERT_ROOT"]
         guard let scratchRoot, !scratchRoot.isEmpty else {
             throw CommandError("missing scratch root. Pass --scratch-root PATH or set XCODE_STORAGE_VERIFY_ROOT.", exitCode: 64)
         }
 
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
-        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_VERIFY_HOME"] ?? environment["XCODE_STORAGE_CERT_HOME"] ?? verificationHome(environment: environment)
-        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_VERIFY_RUNTIME"] ?? environment["XCODE_STORAGE_CERT_RUNTIME"]
-        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_VERIFY_DEVICE_TYPE"] ?? environment["XCODE_STORAGE_CERT_DEVICE_TYPE"]
+        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_VERIFY_HOME"] ?? verificationHome(environment: environment)
+        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_VERIFY_RUNTIME"]
+        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_VERIFY_DEVICE_TYPE"]
         let keepArtifacts = arguments.popFlag("--keep-artifacts")
             || environmentFlag(environment["XCODE_STORAGE_VERIFY_KEEP_ARTIFACTS"])
-            || environmentFlag(environment["XCODE_STORAGE_CERT_KEEP_ARTIFACTS"])
         let allowSystem = arguments.popFlag("--allow-system")
             || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SYSTEM"])
-            || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SYSTEM"])
         let allowSimDelete = arguments.popFlag("--allow-sim-delete")
             || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SIM_DELETE"])
-            || environmentFlag(environment["XCODE_STORAGE_CERT_ALLOW_SIM_DELETE"])
         let bootTimeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
         try arguments.rejectUnknown()
 
