@@ -62,7 +62,9 @@ jobs:
       - name: Verify checksum
         env:
           CHECKSUM: ${{ steps.build.outputs.checksum }}
-        run: shasum -a 256 -c "$CHECKSUM"
+        run: |
+          cd "$(dirname "$CHECKSUM")"
+          shasum -a 256 -c "$(basename "$CHECKSUM")"
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3.0.1
