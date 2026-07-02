@@ -249,7 +249,7 @@ struct CLI {
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
-        let actions = try NativeActions().install(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
+        let actions = try MountActions().install(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
         actions.forEach { print($0) }
     }
 
@@ -261,7 +261,7 @@ struct CLI {
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
-        let actions = try NativeActions().repair(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
+        let actions = try MountActions().repair(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
         actions.forEach { print($0) }
     }
 
@@ -272,7 +272,7 @@ struct CLI {
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
-        let actions = try NativeActions().uninstall(config: config, scope: scope, unload: unload, dryRun: dryRun)
+        let actions = try MountActions().uninstall(config: config, scope: scope, unload: unload, dryRun: dryRun)
         actions.forEach { print($0) }
     }
 
@@ -282,7 +282,7 @@ struct CLI {
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
-        let report = NativeActions().status(config: config, scope: scope)
+        let report = MountActions().status(config: config, scope: scope)
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

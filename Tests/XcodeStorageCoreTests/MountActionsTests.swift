@@ -2,9 +2,9 @@ import Foundation
 import Testing
 @testable import XcodeStorageCore
 
-@Test func nativeMountInventoryUsesApplePathsAndExternalSparsebundles() {
+@Test func managedMountInventoryUsesApplePathsAndExternalSparsebundles() {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
-    let mounts = NativeMounts.all(config: config)
+    let mounts = ManagedMounts.all(config: config)
 
     #expect(mounts.map(\.id) == ["devices", "derived-data", "archives", "caches", "images", "volumes"])
     #expect(mounts.first { $0.id == "images" }?.mountPoint == "/Library/Developer/CoreSimulator/Images")
@@ -14,11 +14,11 @@ import Testing
     #expect(mounts.first { $0.id == "images" }?.preparation == .coreSimulatorImages)
 }
 
-@Test func nativeInstallDryRunCreatesSparsebundlesAndMountsWithoutSymlinks() throws {
+@Test func mountInstallDryRunCreatesSparsebundlesAndMountsWithoutSymlinks() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
-    let actions = try NativeActions(runner: NativeStubRunner(results: [:])).install(
+    let actions = try MountActions(runner: MountStubRunner(results: [:])).install(
         config: config,
         toolPath: "/opt/homebrew/bin/xcode-storage",
         scope: .all,
@@ -30,12 +30,12 @@ import Testing
     #expect(actions.contains { $0.contains("hdiutil create") && $0.contains("DerivedData.sparsebundle") && $0.contains("-type SPARSEBUNDLE") })
     #expect(actions.contains { $0.contains("chmod 1777") && $0.contains("/mnt") })
     #expect(actions.contains { $0.contains("hdiutil attach") && $0.contains("/Library/Developer/CoreSimulator/Images") })
-    #expect(actions.contains { $0 == "write \(config.nativeUserLaunchAgentPath)" })
-    #expect(actions.contains { $0 == "write \(config.nativeSystemLaunchDaemonPath)" })
+    #expect(actions.contains { $0 == "write \(config.mountUserLaunchAgentPath)" })
+    #expect(actions.contains { $0 == "write \(config.mountSystemLaunchDaemonPath)" })
     #expect(!actions.contains { $0.localizedCaseInsensitiveContains("ln -s") })
 }
 
-@Test func nativeInstallRejectsSymlinkMountpoints() throws {
+@Test func mountInstallRejectsSymlinkMountpoints() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
@@ -48,7 +48,7 @@ import Testing
     try FileManager.default.createSymbolicLink(atPath: config.deviceMount, withDestinationPath: target)
 
     #expect(throws: CommandError.self) {
-        _ = try NativeActions(runner: NativeStubRunner(results: [:])).install(
+        _ = try MountActions(runner: MountStubRunner(results: [:])).install(
             config: config,
             toolPath: "/opt/homebrew/bin/xcode-storage",
             scope: .user,
@@ -58,25 +58,25 @@ import Testing
     }
 }
 
-@Test func nativeStatusFailsSymlinkAndWrongBackend() throws {
+@Test func mountStatusFailsSymlinkAndWrongBackend() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
-    try createNativeFixture(config: config)
+    try createMountFixture(config: config)
     let target = "\(home)/real-derived-data"
     try FileManager.default.createDirectory(atPath: target, withIntermediateDirectories: true)
-    try? FileManager.default.removeItem(atPath: config.nativeDerivedDataMount)
-    try FileManager.default.createSymbolicLink(atPath: config.nativeDerivedDataMount, withDestinationPath: target)
+    try? FileManager.default.removeItem(atPath: config.mountDerivedDataMount)
+    try FileManager.default.createSymbolicLink(atPath: config.mountDerivedDataMount, withDestinationPath: target)
 
-    let runner = NativeStubRunner(results: [
+    let runner = MountStubRunner(results: [
         "/sbin/mount": ProcessResult(
             exitCode: 0,
-            stdout: nativeMountOutput(config: config),
+            stdout: managedMountOutput(config: config),
             stderr: ""
         ),
         "/usr/bin/hdiutil": ProcessResult(
             exitCode: 0,
-            stdout: nativeHdiutilOutput(config: config, only: ["devices"]),
+            stdout: mountHdiutilOutput(config: config, only: ["devices"]),
             stderr: ""
         ),
         "/usr/sbin/diskutil": ProcessResult(
@@ -86,16 +86,16 @@ import Testing
         )
     ])
 
-    let report = NativeActions(runner: runner).status(config: config, scope: .user)
+    let report = MountActions(runner: runner).status(config: config, scope: .user)
 
     #expect(!report.passed)
     #expect(report.checks.contains { $0.status == .fail && $0.label == "Mount derived-data mountpoint is not a symlink" })
     #expect(report.checks.contains { $0.status == .fail && $0.label == "Mount derived-data uses configured sparsebundle" })
 }
 
-@Test func nativeLaunchdPlistsPassPlutilLintAndHelpersAvoidSymlinks() throws {
+@Test func mountLaunchdPlistsPassPlutilLintAndHelpersAvoidSymlinks() throws {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
-    let templates = NativeLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage")
+    let templates = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage")
 
     try assertPlistLintPasses(templates.userAgentPlist)
     try assertPlistLintPasses(templates.systemDaemonPlist)
@@ -107,9 +107,9 @@ import Testing
     #expect(!templates.systemHelper.localizedCaseInsensitiveContains("ln -s"))
 }
 
-@Test func nativeSystemHelperKeepsRecordPathsWithSpacesParseable() {
+@Test func mountSystemHelperKeepsRecordPathsWithSpacesParseable() {
     let config = StorageConfig(root: "/Volumes/External Xcode", home: "/Users/rudi")
-    let helper = NativeLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage").systemHelper
+    let helper = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage").systemHelper
 
     #expect(helper.contains("images=('/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle'"))
     #expect(helper.contains("mountpoints=(/Library/Developer/CoreSimulator/Caches"))
@@ -121,26 +121,26 @@ import Testing
     #expect(!helper.contains("index($0, image)"))
 }
 
-@Test func nativeRepairSkipsImagesPreparationWhenAlreadyMounted() throws {
+@Test func mountRepairSkipsImagesPreparationWhenAlreadyMounted() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
-    try createNativeFixture(config: config)
+    try createMountFixture(config: config)
 
-    let runner = NativeStubRunner(results: [
+    let runner = MountStubRunner(results: [
         "/sbin/mount": ProcessResult(
             exitCode: 0,
-            stdout: nativeMountOutput(config: config),
+            stdout: managedMountOutput(config: config),
             stderr: ""
         ),
         "/usr/bin/hdiutil": ProcessResult(
             exitCode: 0,
-            stdout: nativeHdiutilOutput(config: config),
+            stdout: mountHdiutilOutput(config: config),
             stderr: ""
         )
     ])
 
-    let actions = try NativeActions(runner: runner).repair(
+    let actions = try MountActions(runner: runner).repair(
         config: config,
         toolPath: "/opt/homebrew/bin/xcode-storage",
         scope: .system,
@@ -152,13 +152,13 @@ import Testing
     #expect(!actions.contains { $0.contains("/tmp/xcode-storage-images-") && $0.contains("hdiutil attach") })
 }
 
-@Test func nativeInstallRejectsAlreadyMountedWrongBackend() throws {
+@Test func mountInstallRejectsAlreadyMountedWrongBackend() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
-    try createNativeFixture(config: config)
+    try createMountFixture(config: config)
 
-    let runner = NativeStubRunner(results: [
+    let runner = MountStubRunner(results: [
         "/sbin/mount": ProcessResult(
             exitCode: 0,
             stdout: "/dev/disk9s1 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled, nobrowse)",
@@ -166,13 +166,13 @@ import Testing
         ),
         "/usr/bin/hdiutil": ProcessResult(
             exitCode: 0,
-            stdout: nativeHdiutilOutput(config: config, only: ["derived-data"]),
+            stdout: mountHdiutilOutput(config: config, only: ["derived-data"]),
             stderr: ""
         )
     ])
 
     #expect(throws: CommandError.self) {
-        _ = try NativeActions(runner: runner).install(
+        _ = try MountActions(runner: runner).install(
             config: config,
             toolPath: "/opt/homebrew/bin/xcode-storage",
             scope: .user,
@@ -182,13 +182,13 @@ import Testing
     }
 }
 
-@Test func nativeUninstallRefusesToDetachWrongBackend() throws {
+@Test func mountUninstallRefusesToDetachWrongBackend() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
     let config = StorageConfig(root: root, home: home)
-    try createNativeFixture(config: config)
+    try createMountFixture(config: config)
 
-    let runner = NativeStubRunner(results: [
+    let runner = MountStubRunner(results: [
         "/sbin/mount": ProcessResult(
             exitCode: 0,
             stdout: "/dev/disk9s1 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled, nobrowse)",
@@ -196,13 +196,13 @@ import Testing
         ),
         "/usr/bin/hdiutil": ProcessResult(
             exitCode: 0,
-            stdout: nativeHdiutilOutput(config: config, only: ["derived-data"]),
+            stdout: mountHdiutilOutput(config: config, only: ["derived-data"]),
             stderr: ""
         )
     ])
 
     #expect(throws: CommandError.self) {
-        _ = try NativeActions(runner: runner).uninstall(
+        _ = try MountActions(runner: runner).uninstall(
             config: config,
             scope: .user,
             unload: false,
@@ -211,7 +211,7 @@ import Testing
     }
 }
 
-private struct NativeStubRunner: CommandRunning {
+private struct MountStubRunner: CommandRunning {
     let results: [String: ProcessResult]
 
     func run(
@@ -223,32 +223,32 @@ private struct NativeStubRunner: CommandRunning {
     }
 }
 
-private func createNativeFixture(config: StorageConfig) throws {
-    for nativeMount in NativeMounts.all(config: config) {
+private func createMountFixture(config: StorageConfig) throws {
+    for managedMount in ManagedMounts.all(config: config) {
         try FileManager.default.createDirectory(
-            atPath: nativeMount.imagePath,
+            atPath: managedMount.imagePath,
             withIntermediateDirectories: true
         )
         try FileManager.default.createDirectory(
-            atPath: nativeMount.mountPoint,
+            atPath: managedMount.mountPoint,
             withIntermediateDirectories: true
         )
     }
 }
 
-private func nativeMountOutput(config: StorageConfig) -> String {
-    NativeMounts.all(config: config)
+private func managedMountOutput(config: StorageConfig) -> String {
+    ManagedMounts.all(config: config)
         .map { "/dev/disk1s1 on \($0.mountPoint) (apfs, local, nodev, nosuid, journaled, nobrowse)" }
         .joined(separator: "\n")
 }
 
-private func nativeHdiutilOutput(config: StorageConfig, only ids: Set<String>? = nil) -> String {
-    NativeMounts.all(config: config)
+private func mountHdiutilOutput(config: StorageConfig, only ids: Set<String>? = nil) -> String {
+    ManagedMounts.all(config: config)
         .filter { ids?.contains($0.id) ?? true }
-        .map { nativeMount in
+        .map { managedMount in
             """
-            image-path      : \(nativeMount.imagePath)
-            /dev/disk1s1\t41504653-0000-11AA-AA11-00306543ECAC\t\(nativeMount.mountPoint)
+            image-path      : \(managedMount.imagePath)
+            /dev/disk1s1\t41504653-0000-11AA-AA11-00306543ECAC\t\(managedMount.mountPoint)
             """
         }
         .joined(separator: "\n================================================\n")

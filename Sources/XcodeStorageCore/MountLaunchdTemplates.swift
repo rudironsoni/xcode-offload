@@ -1,6 +1,6 @@
 import Foundation
 
-public struct NativeLaunchdTemplates {
+public struct MountLaunchdTemplates {
     public let config: StorageConfig
     public let toolPath: String
 
@@ -11,7 +11,7 @@ public struct NativeLaunchdTemplates {
 
     public var userAgentPlist: String {
         plist(
-            label: config.nativeUserLaunchAgentLabel,
+            label: config.mountUserLaunchAgentLabel,
             programArguments: [
                 toolPath,
                 "mounts",
@@ -32,8 +32,8 @@ public struct NativeLaunchdTemplates {
 
     public var systemDaemonPlist: String {
         plist(
-            label: config.nativeSystemLaunchDaemonLabel,
-            programArguments: [config.nativeSystemHelperPath],
+            label: config.mountSystemLaunchDaemonLabel,
+            programArguments: [config.mountSystemHelperPath],
             runAtLoad: true,
             startInterval: 60,
             stdout: "/var/log/xcode-storage-mounts-system.log",
@@ -42,7 +42,7 @@ public struct NativeLaunchdTemplates {
     }
 
     public var systemHelper: String {
-        let mounts = NativeMounts.system(config: config)
+        let mounts = ManagedMounts.system(config: config)
         let ids = mounts.map(\.id).map(\.shellQuoted).joined(separator: " ")
         let images = mounts.map(\.imagePath).map(\.shellQuoted).joined(separator: " ")
         let mountpoints = mounts.map(\.mountPoint).map(\.shellQuoted).joined(separator: " ")
@@ -54,7 +54,7 @@ public struct NativeLaunchdTemplates {
         set -euo pipefail
 
         root=\(config.root.shellQuoted)
-        backup_root=\(config.nativeBackupRoot.shellQuoted)
+        backup_root=\(config.mountBackupRoot.shellQuoted)
         ids=(\(ids))
         images=(\(images))
         mountpoints=(\(mountpoints))
@@ -62,7 +62,7 @@ public struct NativeLaunchdTemplates {
         preparations=(\(preparations))
 
         log() {
-          echo "xcode-storage native system: $*" >&2
+          echo "xcode-storage mount system: $*" >&2
         }
 
         fail() {

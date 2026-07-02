@@ -1,36 +1,36 @@
 import Foundation
 
-public enum NativeMountScope: String, Codable, Sendable {
+public enum MountScope: String, Codable, Sendable {
     case user
     case system
 }
 
-public enum NativeMountPreparation: String, Codable, Sendable {
+public enum MountPreparation: String, Codable, Sendable {
     case standard
     case coreSimulatorImages
 }
 
-public struct NativeMount: Codable, Equatable, Sendable {
+public struct ManagedMount: Codable, Equatable, Sendable {
     public let id: String
-    public let scope: NativeMountScope
+    public let scope: MountScope
     public let imagePath: String
     public let mountPoint: String
     public let volumeName: String
     public let defaultSize: String
     public let requiredOwner: String
     public let requiredMode: String
-    public let preparation: NativeMountPreparation
+    public let preparation: MountPreparation
 
     public init(
         id: String,
-        scope: NativeMountScope,
+        scope: MountScope,
         imagePath: String,
         mountPoint: String,
         volumeName: String,
         defaultSize: String,
         requiredOwner: String,
         requiredMode: String,
-        preparation: NativeMountPreparation = .standard
+        preparation: MountPreparation = .standard
     ) {
         self.id = id
         self.scope = scope
@@ -44,12 +44,12 @@ public struct NativeMount: Codable, Equatable, Sendable {
     }
 }
 
-public enum NativeMounts {
-    public static func all(config: StorageConfig) -> [NativeMount] {
+public enum ManagedMounts {
+    public static func all(config: StorageConfig) -> [ManagedMount] {
         user(config: config) + system(config: config)
     }
 
-    public static func matching(scope: LaunchdScope, config: StorageConfig) -> [NativeMount] {
+    public static func matching(scope: LaunchdScope, config: StorageConfig) -> [ManagedMount] {
         switch scope {
         case .user:
             return user(config: config)
@@ -60,9 +60,9 @@ public enum NativeMounts {
         }
     }
 
-    public static func user(config: StorageConfig) -> [NativeMount] {
+    public static func user(config: StorageConfig) -> [ManagedMount] {
         [
-            NativeMount(
+            ManagedMount(
                 id: "devices",
                 scope: .user,
                 imagePath: config.deviceStoreImage,
@@ -72,21 +72,21 @@ public enum NativeMounts {
                 requiredOwner: "user",
                 requiredMode: "0755"
             ),
-            NativeMount(
+            ManagedMount(
                 id: "derived-data",
                 scope: .user,
-                imagePath: config.nativeDerivedDataImage,
-                mountPoint: config.nativeDerivedDataMount,
+                imagePath: config.mountDerivedDataImage,
+                mountPoint: config.mountDerivedDataMount,
                 volumeName: "XcodeDerivedData",
                 defaultSize: "300g",
                 requiredOwner: "user",
                 requiredMode: "0755"
             ),
-            NativeMount(
+            ManagedMount(
                 id: "archives",
                 scope: .user,
-                imagePath: config.nativeArchivesImage,
-                mountPoint: config.nativeArchivesMount,
+                imagePath: config.mountArchivesImage,
+                mountPoint: config.mountArchivesMount,
                 volumeName: "XcodeArchives",
                 defaultSize: "200g",
                 requiredOwner: "user",
@@ -95,9 +95,9 @@ public enum NativeMounts {
         ]
     }
 
-    public static func system(config: StorageConfig) -> [NativeMount] {
+    public static func system(config: StorageConfig) -> [ManagedMount] {
         [
-            NativeMount(
+            ManagedMount(
                 id: "caches",
                 scope: .system,
                 imagePath: config.cacheImage,
@@ -107,22 +107,22 @@ public enum NativeMounts {
                 requiredOwner: "root:wheel",
                 requiredMode: "0755"
             ),
-            NativeMount(
+            ManagedMount(
                 id: "images",
                 scope: .system,
-                imagePath: config.nativeImagesImage,
-                mountPoint: config.nativeImagesMount,
+                imagePath: config.mountImagesImage,
+                mountPoint: config.mountImagesMount,
                 volumeName: "XcodeSimulatorImages",
                 defaultSize: "150g",
                 requiredOwner: "root:wheel",
                 requiredMode: "0755",
                 preparation: .coreSimulatorImages
             ),
-            NativeMount(
+            ManagedMount(
                 id: "volumes",
                 scope: .system,
-                imagePath: config.nativeVolumesImage,
-                mountPoint: config.nativeVolumesMount,
+                imagePath: config.mountVolumesImage,
+                mountPoint: config.mountVolumesMount,
                 volumeName: "XcodeSimulatorVolumes",
                 defaultSize: "50g",
                 requiredOwner: "root:wheel",

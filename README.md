@@ -290,8 +290,7 @@ sudo xcode-storage mounts verify \
 ```
 
 `--mode e2e` can recreate a disposable simulator only when
-`--allow-sim-delete` is set. `scripts/certify-native.sh` remains only as a
-compatibility wrapper around `xcode-storage mounts verify`.
+`--allow-sim-delete` is set.
 
 ## Release
 
