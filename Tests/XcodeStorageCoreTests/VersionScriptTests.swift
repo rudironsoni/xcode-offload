@@ -20,13 +20,13 @@ import Testing
     #expect(version.wholeMatch(of: #/[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+\+[0-9a-f]+/#) != nil)
 }
 
-@Test func versionScriptDevelopmentVersionIsSemVerCompatible() throws {
+@Test func versionScriptCurrentCheckoutVersionIsSemVerCompatible() throws {
     let output = try temporaryOutputPath()
     defer { try? FileManager.default.removeItem(atPath: output) }
 
     let version = try runVersionScript(output: output, environment: [:])
 
-    #expect(version.wholeMatch(of: #/[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+\+[0-9a-f]+/#) != nil)
+    #expect(version.wholeMatch(of: #/[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?/#) != nil)
 }
 
 private func runVersionScript(output: String, environment: [String: String]) throws -> String {
