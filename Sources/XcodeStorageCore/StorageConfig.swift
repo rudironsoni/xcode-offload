@@ -19,6 +19,11 @@ public struct StorageConfig: Codable, Equatable, Sendable {
     public let cacheHelperPath: String
     public let userLaunchAgentPath: String
     public let systemLaunchDaemonPath: String
+    public let nativeUserLaunchAgentLabel: String
+    public let nativeSystemLaunchDaemonLabel: String
+    public let nativeSystemHelperPath: String
+    public let nativeUserLaunchAgentPath: String
+    public let nativeSystemLaunchDaemonPath: String
 
     public init(
         root: String,
@@ -48,6 +53,11 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         self.cacheHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-coresimulator-caches"
         self.userLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"
         self.systemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist"
+        self.nativeUserLaunchAgentLabel = "io.github.rudironsoni.xcode-storage.native-user"
+        self.nativeSystemLaunchDaemonLabel = "io.github.rudironsoni.xcode-storage.native-system"
+        self.nativeSystemHelperPath = "/Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-native-system"
+        self.nativeUserLaunchAgentPath = "\(normalizedHome)/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.native-user.plist"
+        self.nativeSystemLaunchDaemonPath = "/Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.native-system.plist"
     }
 
     public var xcrunShim: String {
@@ -78,6 +88,42 @@ public struct StorageConfig: Codable, Equatable, Sendable {
             "\(xcodeRoot)/XCFrameworks",
             URL(fileURLWithPath: deviceMount).deletingLastPathComponent().path
         ]
+    }
+
+    public var nativeBackupRoot: String {
+        "\(xcodeRoot)/Backups/native"
+    }
+
+    public var nativeImagesImage: String {
+        "\(xcodeRoot)/CoreSimulator/Images.sparsebundle"
+    }
+
+    public var nativeVolumesImage: String {
+        "\(xcodeRoot)/CoreSimulator/Volumes.sparsebundle"
+    }
+
+    public var nativeDerivedDataImage: String {
+        "\(xcodeRoot)/XcodeDefaults/DerivedData.sparsebundle"
+    }
+
+    public var nativeArchivesImage: String {
+        "\(xcodeRoot)/XcodeDefaults/Archives.sparsebundle"
+    }
+
+    public var nativeImagesMount: String {
+        "/Library/Developer/CoreSimulator/Images"
+    }
+
+    public var nativeVolumesMount: String {
+        "/Library/Developer/CoreSimulator/Volumes"
+    }
+
+    public var nativeDerivedDataMount: String {
+        "\(home)/Library/Developer/Xcode/DerivedData"
+    }
+
+    public var nativeArchivesMount: String {
+        "\(home)/Library/Developer/Xcode/Archives"
     }
 }
 

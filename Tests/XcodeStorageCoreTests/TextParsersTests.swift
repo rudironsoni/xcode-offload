@@ -29,6 +29,19 @@ import Testing
     #expect(line == "/dev/disk2s1 on /Volumes/My Disk/Devices (apfs, local, nobrowse)")
 }
 
+@Test func mountLineMatchesCanonicalTemporaryPaths() {
+    let output = """
+    /dev/disk13s1 on /private/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)
+    """
+
+    let line = TextParsers.mountLine(
+        for: "/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices",
+        in: output
+    )
+
+    #expect(line == "/dev/disk13s1 on /private/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)")
+}
+
 @Test func diskutilParsersTrimValues() {
     let output = """
        Volume Name:              XcodeSimulatorDevicesAPFS

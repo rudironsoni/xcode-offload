@@ -49,6 +49,14 @@ require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.
 output="$("$bin" launchd install --root "$tmp/External Disk" --home "$tmp/Home" --dry-run)"
 require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$output"
 
+output="$("$bin" native install --root "$tmp/External Disk" --home "$tmp/Home" --scope user --dry-run)"
+require_output "native user install dry-run" "DerivedData.sparsebundle" "$output"
+require_output "native user install dry-run" "$tmp/Home/Library/Developer/Xcode/DerivedData" "$output"
+
+output="$("$bin" native install --root "$tmp/External Disk" --home "$tmp/Home" --scope system --dry-run)"
+require_output "native system install dry-run" "/Library/Developer/CoreSimulator/Images" "$output"
+require_output "native system install dry-run" "chmod 1777" "$output"
+
 if "$bin" doctor --root "$tmp/missing-root" --skip-simctl --json >"$tmp/doctor.json" 2>"$tmp/doctor.err"; then
   echo "expected doctor to fail for missing root" >&2
   exit 1

@@ -2,10 +2,16 @@ import Foundation
 
 public enum TextParsers {
     public static func mountLine(for mountPoint: String, in mountOutput: String) -> String? {
-        mountOutput
+        let expectedMountPaths = normalizedPathCandidates(for: mountPoint)
+        return mountOutput
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
-            .first { $0.contains(" on \(mountPoint) ") }
+            .first { line in
+                guard let mountedPath = mountedPath(fromMountLine: line) else {
+                    return false
+                }
+                return !expectedMountPaths.isDisjoint(with: normalizedPathCandidates(for: mountedPath))
+            }
     }
 
     public static func volumeName(fromDiskutilInfo output: String) -> String? {
@@ -75,6 +81,28 @@ public enum TextParsers {
         }
 
         return nil
+    }
+
+    private static func mountedPath(fromMountLine line: String) -> String? {
+        guard let onRange = line.range(of: " on "),
+              let optionsRange = line.range(of: " (", range: onRange.upperBound..<line.endIndex) else {
+            return nil
+        }
+        return String(line[onRange.upperBound..<optionsRange.lowerBound])
+    }
+
+    private static func normalizedPathCandidates(for path: String) -> Set<String> {
+        let standardized = (path as NSString).standardizingPath
+        let resolved = (standardized as NSString).resolvingSymlinksInPath
+        var candidates: Set<String> = [path, standardized, resolved]
+        for candidate in candidates {
+            if candidate == "/tmp" || candidate.hasPrefix("/tmp/") {
+                candidates.insert("/private\(candidate)")
+            } else if candidate == "/private/tmp" || candidate.hasPrefix("/private/tmp/") {
+                candidates.insert(String(candidate.dropFirst("/private".count)))
+            }
+        }
+        return candidates
     }
 }
 

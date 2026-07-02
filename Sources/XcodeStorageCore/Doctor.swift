@@ -75,6 +75,7 @@ public struct Doctor {
         if strict {
             checks.append(contentsOf: strictStorageChecks(config: config))
             checks.append(contentsOf: strictLaunchdChecks(config: config))
+            checks.append(contentsOf: NativeActions(runner: runner, fileManager: fileManager).nativeChecks(config: config, scope: .all, includeLaunchd: false))
         }
 
         if requireShims {

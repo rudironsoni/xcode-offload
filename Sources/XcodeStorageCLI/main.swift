@@ -48,6 +48,8 @@ struct CLI {
             try daemon(arguments: &arguments)
         case "launchd":
             try launchd(arguments: &arguments)
+        case "native":
+            try native(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
         case "wrap-xcrun":
@@ -218,6 +220,88 @@ struct CLI {
         }
     }
 
+    private func native(arguments: inout Arguments) throws {
+        let subcommand = arguments.popCommand() ?? "help"
+
+        switch subcommand {
+        case "install":
+            try nativeInstall(arguments: &arguments)
+        case "repair":
+            try nativeRepair(arguments: &arguments)
+        case "uninstall":
+            try nativeUninstall(arguments: &arguments)
+        case "status":
+            try nativeStatus(arguments: &arguments)
+        case "help", "-h", "--help":
+            printNativeHelp()
+        default:
+            throw CommandError("unknown native command: \(subcommand)", exitCode: 64)
+        }
+    }
+
+    private func nativeInstall(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = arguments.popFlag("--load")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try NativeActions().install(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
+        actions.forEach { print($0) }
+    }
+
+    private func nativeRepair(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = arguments.popFlag("--load")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try NativeActions().repair(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
+        actions.forEach { print($0) }
+    }
+
+    private func nativeUninstall(arguments: inout Arguments) throws {
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let dryRun = arguments.popFlag("--dry-run")
+        let unload = arguments.popFlag("--unload")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try NativeActions().uninstall(config: config, scope: scope, unload: unload, dryRun: dryRun)
+        actions.forEach { print($0) }
+    }
+
+    private func nativeStatus(arguments: inout Arguments) throws {
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
+        let json = arguments.popFlag("--json")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let report = NativeActions().status(config: config, scope: scope)
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            FileHandle.standardOutput.write(try encoder.encode(report))
+            print()
+        } else {
+            for check in report.checks {
+                print(check.humanLine)
+            }
+            if report.passed {
+                print("OK xcode native storage status passed")
+            } else {
+                FileHandle.standardError.write(Data("FAIL xcode native storage status found \(report.failureCount) issue(s)\n".utf8))
+            }
+        }
+
+        if !report.passed {
+            throw ExitRequested(code: 1)
+        }
+    }
+
     private func installSystemLaunchd(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let dryRun = arguments.popFlag("--dry-run")
@@ -332,6 +416,10 @@ struct CLI {
               xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
               xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
               xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
               xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
@@ -359,6 +447,22 @@ struct CLI {
 
             Usage:
               xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+            """
+        )
+    }
+
+    private func printNativeHelp() {
+        print(
+            """
+            xcode-storage native manages transparent APFS sparsebundle mountpoints at Apple paths.
+
+            Usage:
+              xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+
+            Native mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
             """
         )
     }

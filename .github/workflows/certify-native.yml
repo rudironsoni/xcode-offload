@@ -1,0 +1,57 @@
+name: Native Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Certification mode: user, system, or e2e"
+        required: true
+        default: user
+        type: choice
+        options:
+          - user
+          - system
+          - e2e
+      cert_root:
+        description: "Dedicated certification root on a writable external volume"
+        required: true
+        type: string
+      runtime:
+        description: "Optional CoreSimulator runtime id for e2e recreate"
+        required: false
+        type: string
+      device_type:
+        description: "Optional CoreSimulator device type id for e2e recreate"
+        required: false
+        type: string
+      keep_artifacts:
+        description: "Keep certification artifacts on the runner"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    name: Native Certification
+    runs-on: [self-hosted, macOS]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Build
+        run: swift build
+
+      - name: Certify native mode
+        env:
+          XCODE_STORAGE_CERT_ROOT: ${{ inputs.cert_root }}
+          XCODE_STORAGE_CERT_RUNTIME: ${{ inputs.runtime }}
+          XCODE_STORAGE_CERT_DEVICE_TYPE: ${{ inputs.device_type }}
+          XCODE_STORAGE_CERT_KEEP_ARTIFACTS: ${{ inputs.keep_artifacts }}
+          XCODE_STORAGE_CERT_ALLOW_SYSTEM: ${{ inputs.mode == 'system' }}
+          XCODE_STORAGE_CERT_ALLOW_SIM_DELETE: ${{ inputs.mode == 'e2e' }}
+        run: scripts/certify-native.sh --mode "${{ inputs.mode }}"

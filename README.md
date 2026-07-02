@@ -11,6 +11,7 @@ The first target is the workflow proven by the original extraction:
   and result bundles
 - sparsebundle-backed CoreSimulator device store
 - sparsebundle-backed CoreSimulator cache store
+- native APFS sparsebundle mountpoints for transparent Apple default paths
 - optional shims for `xcrun`, `simctl`, and `xcodebuild`
 - doctor checks that validate the actual mount and command state
 
@@ -52,6 +53,10 @@ xcode-storage unmount devices|caches [--root PATH] [--dry-run]
 xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
 xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
 xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+xcode-storage native install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-storage native repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-storage native uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+xcode-storage native status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
 xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage sim runtimes
@@ -78,6 +83,11 @@ compatibility spelling.
 - `daemon install --dry-run` and `launchd install --dry-run` print the
   root-owned LaunchDaemon and helper install plan without writing into
   `/Library`.
+- `native install --dry-run` prints the APFS sparsebundle creation, backup,
+  mount, and launchd plan for transparent Apple default paths without writing
+  into `~/Library` or `/Library`.
+- Native mode never creates symlinks for Apple paths. Symlinked managed paths
+  are invalid and must be replaced by real directories or APFS mountpoints.
 - `install-launchd --dry-run` prints the LaunchAgent, LaunchDaemon, and helper
   install plan without writing into `~/Library` or `/Library`.
 - Shims are opt-in through `install-shims`.
@@ -132,6 +142,57 @@ Verify:
 ```sh
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
 ```
+
+## Native Transparent Mode
+
+Native mode makes default Apple tools see regular Apple paths backed by mounted
+APFS sparsebundles. It does not rely on symlinks.
+
+Managed paths include:
+
+```text
+~/Library/Developer/CoreSimulator/Devices
+~/Library/Developer/Xcode/DerivedData
+~/Library/Developer/Xcode/Archives
+/Library/Developer/CoreSimulator/Caches
+/Library/Developer/CoreSimulator/Images
+/Library/Developer/CoreSimulator/Volumes
+```
+
+Install user-owned native mountpoints:
+
+```sh
+xcode-storage native install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
+```
+
+Install root-owned native mountpoints once:
+
+```sh
+sudo xcode-storage native install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+```
+
+Check status:
+
+```sh
+xcode-storage native status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
+```
+
+Native mode deliberately refuses symlinked Apple paths because CoreSimulator and
+`simdiskimaged` can reject symlinked mount parents. If a managed path already
+contains data, native mode backs it up under
+`$XCODE_STORAGE_ROOT/Xcode/Backups/native/<timestamp>/` before mounting. Backups
+are never deleted automatically.
+
+After native mode is mounted, default Apple tools can use the managed paths
+without shims:
+
+```sh
+PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcrun simctl list devices available
+PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version
+```
+
+Shims remain available for automation that wants explicit build flag rewriting
+and `TMPDIR` routing, but they are no longer the transparent storage mechanism.
 
 ## Launchd
 
@@ -213,6 +274,20 @@ scripts/check-release-artifact.sh
 
 Live machine certification can still be done manually with `doctor --strict`,
 but it is intentionally not part of GitHub Actions.
+
+Native mode has a gated certification script for dedicated machines:
+
+```sh
+XCODE_STORAGE_CERT_ROOT="/Volumes/YourExternalVolume/xcode-storage-cert" \
+  scripts/certify-native.sh --mode user
+
+sudo XCODE_STORAGE_CERT_ROOT="/Volumes/YourExternalVolume/xcode-storage-cert" \
+  XCODE_STORAGE_CERT_ALLOW_SYSTEM=1 \
+  scripts/certify-native.sh --mode system
+```
+
+`--mode e2e` can recreate a disposable simulator only when
+`XCODE_STORAGE_CERT_ALLOW_SIM_DELETE=1` is set.
 
 ## Release
 
