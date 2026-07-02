@@ -19,10 +19,32 @@ import Testing
     let output = """
        Volume Name:              XcodeSimulatorDevicesAPFS
        Mount Point:              /Volumes/ExternalXcode
+       File System Personality:  APFS
     """
 
     #expect(TextParsers.volumeName(fromDiskutilInfo: output) == "XcodeSimulatorDevicesAPFS")
     #expect(TextParsers.volumeMountPoint(fromDiskutilInfo: output) == "/Volumes/ExternalXcode")
+    #expect(TextParsers.fileSystemPersonality(fromDiskutilInfo: output) == "APFS")
+    #expect(TextParsers.isAPFS(fromDiskutilInfo: output))
+}
+
+@Test func launchctlLastExitParserFindsStatus() {
+    let output = """
+    domain = system
+    service = io.github.rudironsoni.xcode-storage.caches
+    last exit code = 0
+    """
+
+    #expect(TextParsers.launchctlLastExitStatus(from: output) == 0)
+}
+
+@Test func launchctlLastExitParserFindsNonZeroStatus() {
+    let output = """
+    path = /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist
+    last exit status = -78
+    """
+
+    #expect(TextParsers.launchctlLastExitStatus(from: output) == -78)
 }
 
 @Test func connectionFailureParserMatchesCoreSimulatorErrors() {

@@ -30,6 +30,8 @@ struct CLI {
             print(Version.current.displayString)
         case "doctor":
             try doctor(arguments: &arguments)
+        case "repair":
+            try repair(arguments: &arguments)
         case "init":
             try initialize(arguments: &arguments)
         case "mount":
@@ -60,9 +62,10 @@ struct CLI {
         let json = arguments.popFlag("--json")
         let requireShims = arguments.popFlag("--require-shims")
         let skipSimctl = arguments.popFlag("--skip-simctl")
+        let strict = arguments.popFlag("--strict")
         try arguments.rejectUnknown()
 
-        let report = Doctor().run(config: config, requireShims: requireShims, validateSimctl: !skipSimctl)
+        let report = Doctor().run(config: config, requireShims: requireShims, validateSimctl: !skipSimctl, strict: strict)
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -83,6 +86,28 @@ struct CLI {
         if !report.passed {
             throw ExitRequested(code: 1)
         }
+    }
+
+    private func repair(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let explicitShimDir = arguments.popOption("--shim-dir")
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = arguments.popFlag("--load")
+        let installShims = arguments.popFlag("--install-shims")
+        let config = try makeConfig(arguments: &arguments, explicitShimDir: explicitShimDir)
+        try arguments.rejectUnknown()
+
+        let actions = StorageActions()
+        var plan: [String] = []
+        plan.append(contentsOf: try actions.initialize(config: config, createImages: true, dryRun: dryRun))
+        plan.append(contentsOf: try actions.mount(.devices, config: config, dryRun: dryRun))
+        plan.append(contentsOf: try actions.mount(.caches, config: config, dryRun: dryRun))
+        plan.append(contentsOf: try actions.installLaunchd(config: config, toolPath: toolPath, scope: .all, load: load, dryRun: dryRun))
+        if installShims {
+            plan.append(contentsOf: try actions.installShims(config: config, toolPath: toolPath, dryRun: dryRun))
+        }
+
+        plan.forEach { print($0) }
     }
 
     private func initialize(arguments: inout Arguments) throws {
@@ -251,7 +276,8 @@ struct CLI {
             xcode-storage manages external Xcode and CoreSimulator storage.
 
             Usage:
-              xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--json]
+              xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
+              xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--install-shims] [--load] [--dry-run]
               xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
               xcode-storage mount devices|caches [--root PATH] [--dry-run]
               xcode-storage unmount devices|caches [--root PATH] [--dry-run]

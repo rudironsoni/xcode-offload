@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public enum CheckStatus: String, Codable, Sendable {
@@ -57,7 +58,8 @@ public struct Doctor {
     public func run(
         config: StorageConfig,
         requireShims: Bool,
-        validateSimctl: Bool
+        validateSimctl: Bool,
+        strict: Bool = false
     ) -> DoctorReport {
         var checks: [DoctorCheck] = []
 
@@ -69,6 +71,11 @@ public struct Doctor {
         checks.append(tmpWritable(config.tmp))
         checks.append(contentsOf: deviceMountChecks(config: config))
         checks.append(cacheMountCheck(config: config))
+
+        if strict {
+            checks.append(contentsOf: strictStorageChecks(config: config))
+            checks.append(contentsOf: strictLaunchdChecks(config: config))
+        }
 
         if requireShims {
             checks.append(executableExists(config.xcrunShim, label: "xcrun wrapper exists"))
@@ -125,7 +132,7 @@ public struct Doctor {
 
         var checks = [DoctorCheck(.pass, "CoreSimulator Devices is mounted", detail: mountLine)]
 
-        let hdiutilInfo = (try? runner.run("/usr/bin/hdiutil", arguments: ["info"], environment: [:]))?.stdout ?? ""
+        let hdiutilInfo = hdiutilInfo()
         if hdiutilInfo.contains(config.deviceStoreImage) {
             checks.append(DoctorCheck(.pass, "CoreSimulator Devices uses certified sparsebundle backend", detail: config.deviceStoreImage))
             return checks
@@ -156,6 +163,131 @@ public struct Doctor {
         }
 
         return DoctorCheck(.pass, "CoreSimulator Caches is mounted", detail: mountLine)
+    }
+
+    private func strictStorageChecks(config: StorageConfig) -> [DoctorCheck] {
+        var checks: [DoctorCheck] = []
+
+        let hdiutilInfo = hdiutilInfo()
+        checks.append(sparsebundleCheck(path: config.deviceStoreImage, label: "DeviceSet sparsebundle", hdiutilInfo: hdiutilInfo))
+        checks.append(sparsebundleCheck(path: config.cacheImage, label: "Cache sparsebundle", hdiutilInfo: hdiutilInfo))
+        checks.append(mountedAPFSCheck(mountPoint: config.deviceMount, label: "CoreSimulator Devices filesystem is APFS"))
+        checks.append(mountedAPFSCheck(mountPoint: config.cacheMount, label: "CoreSimulator Caches filesystem is APFS"))
+
+        if hdiutilInfo.contains(config.deviceStoreImage) {
+            checks.append(DoctorCheck(.pass, "DeviceSet sparsebundle is attached", detail: config.deviceStoreImage))
+        } else {
+            checks.append(DoctorCheck(.fail, "DeviceSet sparsebundle is not attached", detail: config.deviceStoreImage))
+        }
+
+        if hdiutilInfo.contains(config.cacheImage) {
+            checks.append(DoctorCheck(.pass, "Cache sparsebundle is attached", detail: config.cacheImage))
+            checks.append(DoctorCheck(.pass, "CoreSimulator Caches uses certified sparsebundle backend", detail: config.cacheImage))
+        } else {
+            checks.append(DoctorCheck(.fail, "CoreSimulator Caches is not attached from configured sparsebundle", detail: config.cacheImage))
+        }
+
+        return checks
+    }
+
+    private func strictLaunchdChecks(config: StorageConfig) -> [DoctorCheck] {
+        [
+            pathExists(config.userLaunchAgentPath, label: "User LaunchAgent exists"),
+            pathExists(config.systemLaunchDaemonPath, label: "System LaunchDaemon exists"),
+            executableExists(config.cacheHelperPath, label: "Cache mount helper exists"),
+            plistLint(path: config.userLaunchAgentPath, label: "User LaunchAgent plist is valid"),
+            plistLint(path: config.systemLaunchDaemonPath, label: "System LaunchDaemon plist is valid"),
+            launchctlCheck(domain: "gui/\(getuid())", label: config.launchAgentLabel, displayName: "User LaunchAgent"),
+            launchctlCheck(domain: "system", label: config.launchDaemonLabel, displayName: "System LaunchDaemon")
+        ]
+    }
+
+    private func sparsebundleCheck(path: String, label: String, hdiutilInfo: String) -> DoctorCheck {
+        guard fileManager.fileExists(atPath: path) else {
+            return DoctorCheck(.fail, "\(label) missing", detail: path)
+        }
+
+        if hdiutilInfo.contains(path) {
+            return DoctorCheck(.pass, "\(label) is readable", detail: "\(path) is already attached")
+        }
+
+        do {
+            let result = try runner.run("/usr/bin/hdiutil", arguments: ["imageinfo", path], environment: [:])
+            guard result.succeeded else {
+                return DoctorCheck(.fail, "\(label) is not readable by hdiutil", detail: commandDetail(result))
+            }
+
+            let output = [result.stdout, result.stderr].joined(separator: "\n")
+            if output.localizedCaseInsensitiveContains("sparse") || path.hasSuffix(".sparsebundle") {
+                return DoctorCheck(.pass, "\(label) is readable", detail: path)
+            }
+            return DoctorCheck(.fail, "\(label) is not reported as a sparse image", detail: path)
+        } catch {
+            return DoctorCheck(.fail, "\(label) imageinfo failed", detail: error.localizedDescription)
+        }
+    }
+
+    private func mountedAPFSCheck(mountPoint: String, label: String) -> DoctorCheck {
+        do {
+            let result = try runner.run("/usr/sbin/diskutil", arguments: ["info", mountPoint], environment: [:])
+            guard result.succeeded else {
+                return DoctorCheck(.fail, label, detail: commandDetail(result))
+            }
+
+            if TextParsers.isAPFS(fromDiskutilInfo: result.stdout) {
+                return DoctorCheck(.pass, label)
+            }
+            return DoctorCheck(.fail, label, detail: "diskutil did not report APFS for \(mountPoint)")
+        } catch {
+            return DoctorCheck(.fail, label, detail: error.localizedDescription)
+        }
+    }
+
+    private func plistLint(path: String, label: String) -> DoctorCheck {
+        guard fileManager.fileExists(atPath: path) else {
+            return DoctorCheck(.fail, label, detail: "missing \(path)")
+        }
+
+        do {
+            let result = try runner.run("/usr/bin/plutil", arguments: ["-lint", path], environment: [:])
+            if result.succeeded {
+                return DoctorCheck(.pass, label, detail: path)
+            }
+            return DoctorCheck(.fail, label, detail: commandDetail(result))
+        } catch {
+            return DoctorCheck(.fail, label, detail: error.localizedDescription)
+        }
+    }
+
+    private func launchctlCheck(domain: String, label: String, displayName: String) -> DoctorCheck {
+        do {
+            let result = try runner.run("/bin/launchctl", arguments: ["print", "\(domain)/\(label)"], environment: [:])
+            guard result.succeeded else {
+                return DoctorCheck(.fail, "\(displayName) is loaded", detail: commandDetail(result))
+            }
+
+            if let status = TextParsers.launchctlLastExitStatus(from: result.stdout) {
+                if status == 0 {
+                    return DoctorCheck(.pass, "\(displayName) last exit status is 0")
+                }
+                return DoctorCheck(.fail, "\(displayName) last exit status is \(status)")
+            }
+
+            return DoctorCheck(.pass, "\(displayName) is loaded")
+        } catch {
+            return DoctorCheck(.fail, "\(displayName) is loaded", detail: error.localizedDescription)
+        }
+    }
+
+    private func hdiutilInfo() -> String {
+        (try? runner.run("/usr/bin/hdiutil", arguments: ["info"], environment: [:]))?.stdout ?? ""
+    }
+
+    private func commandDetail(_ result: ProcessResult) -> String {
+        [result.stderr, result.stdout]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
     }
 
     private func simctlCheck(arguments: [String], label: String) -> DoctorCheck {

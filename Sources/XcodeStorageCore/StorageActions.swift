@@ -58,14 +58,21 @@ public struct StorageActions {
         let mountPoint = kind == .devices ? config.deviceMount : config.cacheMount
         let imagePath = kind == .devices ? config.deviceStoreImage : config.cacheImage
 
-        guard fileManager.fileExists(atPath: imagePath) else {
+        guard dryRun || fileManager.fileExists(atPath: imagePath) else {
             throw CommandError("missing sparsebundle: \(imagePath)", exitCode: 78)
         }
 
-        try fileManager.createDirectory(
-            atPath: URL(fileURLWithPath: mountPoint).deletingLastPathComponent().path,
-            withIntermediateDirectories: true
-        )
+        var actions: [String] = []
+
+        if kind == .caches {
+            actions.append(contentsOf: try prepareCacheMountpoint(config: config, dryRun: dryRun))
+        } else {
+            let parent = URL(fileURLWithPath: mountPoint).deletingLastPathComponent().path
+            actions.append("mkdir -p \(parent.shellQuoted)")
+            if !dryRun {
+                try fileManager.createDirectory(atPath: parent, withIntermediateDirectories: true)
+            }
+        }
 
         let command = [
             "/usr/bin/hdiutil",
@@ -82,7 +89,8 @@ public struct StorageActions {
             try runOrThrow(command)
         }
 
-        return [command.map(\.shellQuoted).joined(separator: " ")]
+        actions.append(command.map(\.shellQuoted).joined(separator: " "))
+        return actions
     }
 
     public func unmount(_ kind: MountKind, config: StorageConfig, dryRun: Bool) throws -> [String] {
@@ -134,6 +142,7 @@ public struct StorageActions {
             actions.append("chmod 0644 \(config.userLaunchAgentPath.shellQuoted)")
 
             if !dryRun {
+                try validatePlist(templates.userAgentPlist, name: "user LaunchAgent")
                 try fileManager.createDirectory(atPath: agentDirectory, withIntermediateDirectories: true)
                 try fileManager.createDirectory(atPath: logsDirectory, withIntermediateDirectories: true)
                 try templates.userAgentPlist.write(toFile: config.userLaunchAgentPath, atomically: true, encoding: .utf8)
@@ -160,6 +169,7 @@ public struct StorageActions {
             actions.append("chmod 0644 \(config.systemLaunchDaemonPath.shellQuoted)")
 
             if !dryRun {
+                try validatePlist(templates.systemDaemonPlist, name: "system LaunchDaemon")
                 try templates.cacheMountHelper.write(toFile: config.cacheHelperPath, atomically: true, encoding: .utf8)
                 try templates.systemDaemonPlist.write(toFile: config.systemLaunchDaemonPath, atomically: true, encoding: .utf8)
                 try runOrThrow(["/usr/sbin/chown", "root:wheel", config.cacheHelperPath])
@@ -239,6 +249,58 @@ public struct StorageActions {
         ]
     }
 
+    private func prepareCacheMountpoint(config: StorageConfig, dryRun: Bool) throws -> [String] {
+        var actions = [
+            "mkdir -p \(config.cacheMount.shellQuoted)",
+            "chown root:wheel \(config.cacheMount.shellQuoted) || true",
+            "chmod 0700 \(config.cacheMount.shellQuoted) || true"
+        ]
+
+        if isMounted(config.cacheMount) {
+            return actions
+        }
+
+        if !dryRun {
+            try fileManager.createDirectory(atPath: config.cacheMount, withIntermediateDirectories: true)
+            _ = try? runner.run("/usr/sbin/chown", arguments: ["root:wheel", config.cacheMount], environment: [:])
+            _ = try? runner.run("/bin/chmod", arguments: ["0700", config.cacheMount], environment: [:])
+        }
+
+        let contents = (try? fileManager.contentsOfDirectory(atPath: config.cacheMount)) ?? []
+        let isNonEmpty = !contents.isEmpty
+
+        if isNonEmpty {
+            let backup = "/var/tmp/io.github.rudironsoni.xcode-storage.caches-backups/\(timestamp())/Caches"
+            actions.append("mv \(config.cacheMount.shellQuoted) \(backup.shellQuoted)")
+            actions.append("mkdir -p \(config.cacheMount.shellQuoted)")
+            if !dryRun {
+                try fileManager.createDirectory(atPath: URL(fileURLWithPath: backup).deletingLastPathComponent().path, withIntermediateDirectories: true)
+                try fileManager.moveItem(atPath: config.cacheMount, toPath: backup)
+                try fileManager.createDirectory(atPath: config.cacheMount, withIntermediateDirectories: true)
+                _ = try? runner.run("/usr/sbin/chown", arguments: ["root:wheel", config.cacheMount], environment: [:])
+                _ = try? runner.run("/bin/chmod", arguments: ["0700", config.cacheMount], environment: [:])
+            }
+        }
+
+        return actions
+    }
+
+    private func isMounted(_ mountPoint: String) -> Bool {
+        guard let result = try? runner.run("/sbin/mount", arguments: [], environment: [:]), result.succeeded else {
+            return false
+        }
+        return TextParsers.mountLine(for: mountPoint, in: result.stdout) != nil
+    }
+
+    private func timestamp() -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter.string(from: Date())
+    }
+
     private func runOrThrow(_ command: [String]) throws {
         guard let executable = command.first else {
             throw CommandError("empty command")
@@ -250,6 +312,24 @@ public struct StorageActions {
                 .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                 .joined(separator: "\n")
             throw CommandError(detail.isEmpty ? "command failed: \(command.joined(separator: " "))" : detail)
+        }
+    }
+
+    private func validatePlist(_ plist: String, name: String) throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("xcode-storage-\(UUID().uuidString).plist")
+        try plist.write(to: url, atomically: true, encoding: .utf8)
+        defer {
+            try? fileManager.removeItem(at: url)
+        }
+
+        let result = try runner.run("/usr/bin/plutil", arguments: ["-lint", url.path], environment: [:])
+        guard result.succeeded else {
+            let detail = [result.stderr, result.stdout]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n")
+            throw CommandError("\(name) plist validation failed: \(detail)")
         }
     }
 }

@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import XcodeStorageCore
 
 @Test func userAgentPlistMountsDeviceStoreForConfiguredHome() {
@@ -39,4 +40,29 @@ import Testing
     #expect(helper.contains("/var/tmp/io.github.rudironsoni.xcode-storage.caches-backups"))
     #expect(helper.contains("/bin/mv \"$mountpoint\" \"$backup_dir/Caches\""))
     #expect(helper.contains("/usr/bin/hdiutil attach \"$image\" -mountpoint \"$mountpoint\" -nobrowse -owners on"))
+}
+
+@Test func generatedLaunchdPlistsPassPlutilLint() throws {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
+    let templates = LaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage")
+
+    try assertPlistLintPasses(templates.userAgentPlist)
+    try assertPlistLintPasses(templates.systemDaemonPlist)
+}
+
+private func assertPlistLintPasses(_ plist: String) throws {
+    let url = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("xcode-storage-test-\(UUID().uuidString).plist")
+    try plist.write(to: url, atomically: true, encoding: .utf8)
+    defer {
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/plutil")
+    process.arguments = ["-lint", url.path]
+    try process.run()
+    process.waitUntilExit()
+
+    #expect(process.terminationStatus == 0)
 }

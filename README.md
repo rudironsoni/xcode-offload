@@ -42,7 +42,8 @@ compilation, so a tagged `v0.1.0` build reports `0.1.0`.
 ## Commands
 
 ```sh
-xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--json]
+xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
+xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--install-shims] [--load] [--dry-run]
 xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
 xcode-storage mount devices|caches [--root PATH] [--dry-run]
 xcode-storage unmount devices|caches [--root PATH] [--dry-run]
@@ -57,6 +58,11 @@ xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--b
 ## Safety Rules
 
 - `doctor` is read-mostly and exits non-zero when required state is missing.
+- `doctor --strict` also checks sparsebundle readability, APFS mounted
+  filesystems, cache sparsebundle provenance, launchd plist validity, and
+  launchd last exit status.
+- `repair --dry-run` prints the init, mount, launchd, and optional shim actions
+  needed to bring a machine toward the expected state.
 - `init --dry-run` prints the directory and sparsebundle creation plan.
 - `mount --dry-run`, `unmount --dry-run`, and `install-shims --dry-run` print
   planned actions without changing the system.
@@ -85,6 +91,17 @@ sudo xcode-storage install-launchd --scope system --root "$XCODE_STORAGE_ROOT" -
 
 Pass `--home` when running through `sudo`; otherwise the tool will target
 `/var/root` for user-specific paths.
+
+## Repair
+
+Use `repair --dry-run` first:
+
+```sh
+xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --install-shims --dry-run
+```
+
+Then run without `--dry-run` when the plan is correct. Add `--load` to reload
+the generated launchd jobs after writing them.
 
 ## Current Status
 
