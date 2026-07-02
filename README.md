@@ -41,6 +41,8 @@ compilation, so a tagged `v0.1.0` build reports `0.1.0`.
 
 ## Commands
 
+Command groups use `xcode-storage <group> <verb>`.
+
 ```sh
 xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
 xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
@@ -57,6 +59,11 @@ xcode-storage sim devices [--all]
 xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
 ```
 
+`daemon install` and `launchd install` are equivalent product-facing commands
+for installing the system LaunchDaemon and root-owned cache helper. The older
+`install-launchd --scope system` command remains available as a lower-level
+compatibility spelling.
+
 ## Safety Rules
 
 - `doctor` is read-mostly and exits non-zero when required state is missing.
@@ -68,12 +75,63 @@ xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--b
 - `init --dry-run` prints the directory and sparsebundle creation plan.
 - `mount --dry-run`, `unmount --dry-run`, and `install-shims --dry-run` print
   planned actions without changing the system.
+- `daemon install --dry-run` and `launchd install --dry-run` print the
+  root-owned LaunchDaemon and helper install plan without writing into
+  `/Library`.
 - `install-launchd --dry-run` prints the LaunchAgent, LaunchDaemon, and helper
   install plan without writing into `~/Library` or `/Library`.
 - Shims are opt-in through `install-shims`.
 - Backup deletion is not implemented as an implicit repair action.
 - Simulator first boot defaults to a long timeout because recent iOS runtimes can
   spend many minutes in first-boot data migration.
+
+## Setup
+
+Choose an external storage root explicitly. The tool never defaults to a
+machine-specific volume:
+
+```sh
+export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
+```
+
+Preview the full plan:
+
+```sh
+xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --install-shims --dry-run
+```
+
+Install user-owned pieces without sudo:
+
+```sh
+xcode-storage repair \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --install-shims \
+  --load
+```
+
+Install the root-owned CoreSimulator cache daemon once:
+
+```sh
+sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
+```
+
+The equivalent launchd spelling is:
+
+```sh
+sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
+```
+
+After that one privileged install, normal `xcode-storage`, `xcrun`, `simctl`,
+and `xcodebuild` usage should run as the user. Use `sudo` again only when
+reinstalling, unloading, or changing the system LaunchDaemon/helper.
+
+Verify:
+
+```sh
+xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
+```
 
 ## Launchd
 
@@ -100,6 +158,13 @@ sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 Pass `--home` when running through `sudo`; otherwise the tool will target
 `/var/root` for user-specific paths.
 
+Use `--no-load` when packaging or staging files without immediately bootstrapping
+the system LaunchDaemon:
+
+```sh
+sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --no-load
+```
+
 ## Repair
 
 Use `repair --dry-run` first:
@@ -120,6 +185,9 @@ xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --
 sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
 ```
+
+`repair --scope all` is still supported, but the split install is easier to
+reason about because only the system LaunchDaemon/helper step needs sudo.
 
 ## Current Status
 
