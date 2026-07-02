@@ -48,6 +48,8 @@ xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
 xcode-storage mount devices|caches [--root PATH] [--dry-run]
 xcode-storage unmount devices|caches [--root PATH] [--dry-run]
 xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
+xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
 xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
 xcode-storage sim runtimes
@@ -86,7 +88,13 @@ The system LaunchDaemon installs a root-owned helper that keeps
 sparsebundle:
 
 ```sh
-sudo xcode-storage install-launchd --scope system --root "$XCODE_STORAGE_ROOT" --home "$HOME" --load
+sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
+```
+
+`launchd install` is an equivalent spelling:
+
+```sh
+sudo xcode-storage launchd install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 ```
 
 Pass `--home` when running through `sudo`; otherwise the tool will target
@@ -109,7 +117,7 @@ Recommended split install:
 
 ```sh
 xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --load
-sudo xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
 ```
 

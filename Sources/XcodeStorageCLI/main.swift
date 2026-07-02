@@ -44,6 +44,10 @@ struct CLI {
             try installLaunchd(arguments: &arguments)
         case "uninstall-launchd":
             try uninstallLaunchd(arguments: &arguments)
+        case "daemon":
+            try daemon(arguments: &arguments)
+        case "launchd":
+            try launchd(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
         case "wrap-xcrun":
@@ -188,6 +192,49 @@ struct CLI {
         actions.forEach { print($0) }
     }
 
+    private func daemon(arguments: inout Arguments) throws {
+        let subcommand = arguments.popCommand() ?? "help"
+
+        switch subcommand {
+        case "install":
+            try installSystemLaunchd(arguments: &arguments)
+        case "help", "-h", "--help":
+            printDaemonHelp()
+        default:
+            throw CommandError("unknown daemon command: \(subcommand)", exitCode: 64)
+        }
+    }
+
+    private func launchd(arguments: inout Arguments) throws {
+        let subcommand = arguments.popCommand() ?? "help"
+
+        switch subcommand {
+        case "install":
+            try installSystemLaunchd(arguments: &arguments)
+        case "help", "-h", "--help":
+            printLaunchdHelp()
+        default:
+            throw CommandError("unknown launchd command: \(subcommand)", exitCode: 64)
+        }
+    }
+
+    private func installSystemLaunchd(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = !arguments.popFlag("--no-load")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try StorageActions().installLaunchd(
+            config: config,
+            toolPath: toolPath,
+            scope: .system,
+            load: load,
+            dryRun: dryRun
+        )
+        actions.forEach { print($0) }
+    }
+
     private func sim(arguments: inout Arguments) throws {
         let subcommand = arguments.popCommand() ?? "help"
         let simulator = SimulatorActions()
@@ -283,11 +330,35 @@ struct CLI {
               xcode-storage mount devices|caches [--root PATH] [--dry-run]
               xcode-storage unmount devices|caches [--root PATH] [--dry-run]
               xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
+              xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
               xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
               xcode-storage sim devices [--all]
               xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+            """
+        )
+    }
+
+    private func printDaemonHelp() {
+        print(
+            """
+            xcode-storage daemon manages the root LaunchDaemon for CoreSimulator caches.
+
+            Usage:
+              xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+            """
+        )
+    }
+
+    private func printLaunchdHelp() {
+        print(
+            """
+            xcode-storage launchd manages launchd jobs for CoreSimulator storage.
+
+            Usage:
+              xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
             """
         )
     }
