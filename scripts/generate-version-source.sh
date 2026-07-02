@@ -4,7 +4,7 @@ set -eu
 output="${1:-Sources/XcodeStorageCore/Generated/GeneratedBuildMetadata.swift}"
 mkdir -p "$(dirname "$output")"
 
-tag="${GITHUB_REF_NAME:-}"
+tag="${XCODE_STORAGE_RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
 if [ -z "$tag" ]; then
   tag="$(git describe --tags --exact-match 2>/dev/null || true)"
 fi

@@ -52,7 +52,7 @@ jobs:
       - name: Build release artifact
         id: build
         env:
-          GITHUB_REF_NAME: ${{ steps.changelog.outputs.tag }}
+          XCODE_STORAGE_RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
           XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
         run: |
           archive="$(scripts/build-release.sh)"

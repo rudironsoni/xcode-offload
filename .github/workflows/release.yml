@@ -34,7 +34,7 @@ jobs:
       - name: Build release artifact
         id: build
         env:
-          GITHUB_REF_NAME: ${{ inputs.tag || github.ref_name }}
+          XCODE_STORAGE_RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
         run: |
           archive="$(scripts/build-release.sh)"
