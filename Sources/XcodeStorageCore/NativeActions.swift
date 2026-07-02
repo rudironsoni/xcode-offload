@@ -143,7 +143,7 @@ public struct NativeActions {
         try rejectSymlink(nativeMount.mountPoint)
 
         if isMounted(nativeMount.mountPoint) {
-            if dryRun || isMountedFromConfiguredBackend(nativeMount) {
+            if isMountedFromConfiguredBackend(nativeMount) {
                 return ["already mounted \(nativeMount.mountPoint.shellQuoted)"]
             }
             throw CommandError("native mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
@@ -176,7 +176,7 @@ public struct NativeActions {
             return ["not mounted \(nativeMount.mountPoint.shellQuoted)"]
         }
 
-        if !dryRun && !isMountedFromConfiguredBackend(nativeMount) {
+        if !isMountedFromConfiguredBackend(nativeMount) {
             throw CommandError("refusing to detach native mountpoint from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
         }
 
@@ -244,6 +244,9 @@ public struct NativeActions {
         ]
 
         if isMounted(nativeMount.mountPoint) {
+            if !isMountedFromConfiguredBackend(nativeMount) {
+                throw CommandError("native mountpoint is already mounted from a different backend: \(nativeMount.mountPoint)", exitCode: 78)
+            }
             return ["already prepared \(nativeMount.mountPoint.shellQuoted)"]
         }
 

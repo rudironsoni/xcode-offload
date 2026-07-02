@@ -78,6 +78,23 @@ public struct NativeLaunchdTemplates {
           local image="$1"
           local mountpoint="$2"
           /usr/bin/hdiutil info | /usr/bin/awk -v image="$image" -v mountpoint="$mountpoint" '
+            function trim(value) {
+              sub(/^[[:space:]]+/, "", value)
+              sub(/[[:space:]]+$/, "", value)
+              return value
+            }
+            function equivalent_path(left, right) {
+              if (left == right) {
+                return 1
+              }
+              if (left == "/private" right) {
+                return 1
+              }
+              if (right == "/private" left) {
+                return 1
+              }
+              return 0
+            }
             /^=+$/ {
               if (seen_image && seen_mount) {
                 found = 1
@@ -86,11 +103,19 @@ public struct NativeLaunchdTemplates {
               seen_mount = 0
               next
             }
-            index($0, "image-path") && index($0, image) {
-              seen_image = 1
+            /^[[:space:]]*image-path[[:space:]]*:/ {
+              value = $0
+              sub(/^[^:]*:/, "", value)
+              if (trim(value) == image) {
+                seen_image = 1
+              }
             }
-            index($0, mountpoint) {
-              seen_mount = 1
+            /\t/ {
+              split($0, fields, "\t")
+              value = trim(fields[length(fields)])
+              if (substr(value, 1, 1) == "/" && equivalent_path(value, mountpoint)) {
+                seen_mount = 1
+              }
             }
             END {
               if (seen_image && seen_mount) {

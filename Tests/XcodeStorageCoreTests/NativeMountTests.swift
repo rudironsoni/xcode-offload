@@ -115,7 +115,10 @@ import Testing
     #expect(helper.contains("mountpoints=(/Library/Developer/CoreSimulator/Caches"))
     #expect(helper.contains("mounted_from_configured_backend"))
     #expect(helper.contains("already mounted from a different backend"))
+    #expect(helper.contains("trim(value) == image"))
+    #expect(helper.contains("equivalent_path(value, mountpoint)"))
     #expect(!helper.contains("IFS='|'"))
+    #expect(!helper.contains("index($0, image)"))
 }
 
 @Test func nativeRepairSkipsImagesPreparationWhenAlreadyMounted() throws {
@@ -128,6 +131,11 @@ import Testing
         "/sbin/mount": ProcessResult(
             exitCode: 0,
             stdout: nativeMountOutput(config: config),
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(
+            exitCode: 0,
+            stdout: nativeHdiutilOutput(config: config),
             stderr: ""
         )
     ])
@@ -169,7 +177,7 @@ import Testing
             toolPath: "/opt/homebrew/bin/xcode-storage",
             scope: .user,
             load: false,
-            dryRun: false
+            dryRun: true
         )
     }
 }
@@ -198,7 +206,7 @@ import Testing
             config: config,
             scope: .user,
             unload: false,
-            dryRun: false
+            dryRun: true
         )
     }
 }
