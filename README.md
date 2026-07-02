@@ -43,7 +43,7 @@ compilation, so a tagged `v0.1.0` build reports `0.1.0`.
 
 ```sh
 xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
-xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--install-shims] [--load] [--dry-run]
+xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
 xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
 xcode-storage mount devices|caches [--root PATH] [--dry-run]
 xcode-storage unmount devices|caches [--root PATH] [--dry-run]
@@ -101,7 +101,17 @@ xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --install-shims
 ```
 
 Then run without `--dry-run` when the plan is correct. Add `--load` to reload
-the generated launchd jobs after writing them.
+the generated launchd jobs after writing them. Use `--scope user` for
+non-privileged user LaunchAgent repair, and run with `sudo --preserve-env` or
+an explicit `--root`/`--home` for `--scope system` or `--scope all`.
+
+Recommended split install:
+
+```sh
+xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --load
+sudo xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict
+```
 
 ## Current Status
 

@@ -58,6 +58,10 @@ public struct StorageActions {
         let mountPoint = kind == .devices ? config.deviceMount : config.cacheMount
         let imagePath = kind == .devices ? config.deviceStoreImage : config.cacheImage
 
+        if isMounted(mountPoint) {
+            return ["already mounted \(mountPoint.shellQuoted)"]
+        }
+
         guard dryRun || fileManager.fileExists(atPath: imagePath) else {
             throw CommandError("missing sparsebundle: \(imagePath)", exitCode: 78)
         }
@@ -131,6 +135,8 @@ public struct StorageActions {
         load: Bool,
         dryRun: Bool
     ) throws -> [String] {
+        try preflightSystemScope(scope: scope, dryRun: dryRun)
+
         let templates = LaunchdTemplates(config: config, toolPath: toolPath)
         var actions: [String] = []
 
@@ -197,6 +203,8 @@ public struct StorageActions {
         unload: Bool,
         dryRun: Bool
     ) throws -> [String] {
+        try preflightSystemScope(scope: scope, dryRun: dryRun)
+
         var actions: [String] = []
 
         if scope == .user || scope == .all {
@@ -247,6 +255,16 @@ public struct StorageActions {
             volumeName,
             imagePath
         ]
+    }
+
+    private func preflightSystemScope(scope: LaunchdScope, dryRun: Bool) throws {
+        guard !dryRun, scope == .system || scope == .all else {
+            return
+        }
+
+        guard geteuid() == 0 else {
+            throw CommandError("system launchd scope requires root. Re-run with sudo or use --scope user.", exitCode: 77)
+        }
     }
 
     private func prepareCacheMountpoint(config: StorageConfig, dryRun: Bool) throws -> [String] {

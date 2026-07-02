@@ -91,6 +91,7 @@ struct CLI {
     private func repair(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let explicitShimDir = arguments.popOption("--shim-dir")
+        let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
         let installShims = arguments.popFlag("--install-shims")
@@ -102,7 +103,7 @@ struct CLI {
         plan.append(contentsOf: try actions.initialize(config: config, createImages: true, dryRun: dryRun))
         plan.append(contentsOf: try actions.mount(.devices, config: config, dryRun: dryRun))
         plan.append(contentsOf: try actions.mount(.caches, config: config, dryRun: dryRun))
-        plan.append(contentsOf: try actions.installLaunchd(config: config, toolPath: toolPath, scope: .all, load: load, dryRun: dryRun))
+        plan.append(contentsOf: try actions.installLaunchd(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun))
         if installShims {
             plan.append(contentsOf: try actions.installShims(config: config, toolPath: toolPath, dryRun: dryRun))
         }
@@ -277,7 +278,7 @@ struct CLI {
 
             Usage:
               xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
-              xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--install-shims] [--load] [--dry-run]
+              xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
               xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
               xcode-storage mount devices|caches [--root PATH] [--dry-run]
               xcode-storage unmount devices|caches [--root PATH] [--dry-run]
