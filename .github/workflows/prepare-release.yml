@@ -17,14 +17,14 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Validate scripts
-        run: sh -n scripts/*.sh
+      - name: Validate Makefile
+        run: make check-makefile
 
       - name: Test
         run: swift test
 
       - name: Guard against machine-specific defaults
-        run: scripts/check-no-machine-defaults.sh
+        run: make check-no-machine-defaults
 
       - name: Update changelog and tag release
         id: changelog
@@ -55,7 +55,7 @@ jobs:
           XCODE_STORAGE_RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
           XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
         run: |
-          archive="$(scripts/build-release.sh)"
+          archive="$(make --no-print-directory build-release)"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "checksum=$archive.sha256" >> "$GITHUB_OUTPUT"
 

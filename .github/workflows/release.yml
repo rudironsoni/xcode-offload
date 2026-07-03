@@ -37,7 +37,7 @@ jobs:
           XCODE_STORAGE_RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
         run: |
-          archive="$(scripts/build-release.sh)"
+          archive="$(make --no-print-directory build-release)"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "checksum=$archive.sha256" >> "$GITHUB_OUTPUT"
 
@@ -45,7 +45,7 @@ jobs:
         run: swift test
 
       - name: Guard against machine-specific defaults
-        run: scripts/check-no-machine-defaults.sh
+        run: make check-no-machine-defaults
 
       - name: Verify checksum
         env:

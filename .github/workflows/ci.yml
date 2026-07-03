@@ -20,10 +20,10 @@ jobs:
           fetch-depth: 0
 
       - name: Generate version metadata
-        run: scripts/generate-version-source.sh
+        run: make generate-version-source
 
-      - name: Validate scripts
-        run: sh -n scripts/*.sh
+      - name: Validate Makefile
+        run: make check-makefile
 
       - name: Build
         run: swift build
@@ -32,16 +32,16 @@ jobs:
         run: swift test
 
       - name: Guard against machine-specific defaults
-        run: scripts/check-no-machine-defaults.sh
+        run: make check-no-machine-defaults
 
       - name: Validate docs
-        run: scripts/check-docs.sh
+        run: make check-docs
 
       - name: Smoke version command
-        run: .build/debug/xcode-storage version
+        run: make smoke-version
 
       - name: Smoke CLI behavior
-        run: scripts/smoke-cli.sh
+        run: make smoke-cli
 
       - name: Smoke release artifact
-        run: scripts/check-release-artifact.sh
+        run: make check-release-artifact

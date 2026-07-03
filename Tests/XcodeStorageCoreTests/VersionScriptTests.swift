@@ -40,8 +40,8 @@ import Testing
 
 private func runVersionScript(output: String, environment: [String: String]) throws -> String {
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/bin/sh")
-    process.arguments = ["scripts/generate-version-source.sh", output]
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/make")
+    process.arguments = ["--no-print-directory", "generate-version-source", "OUTPUT=\(output)"]
     process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
 
