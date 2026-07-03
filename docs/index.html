@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xcode-storage documentation</title>
+    <meta name="description" content="Move Xcode and CoreSimulator storage to external APFS sparsebundles without symlinking Apple paths.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a aria-current="page" href="index.html">Overview</a>
+        <a href="install.html">Install</a>
+        <a href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a href="operations.html">Operations</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">macOS developer storage</p>
+          <h1>Move Xcode storage off the internal disk without confusing Apple tools.</h1>
+          <p class="lead">
+            <code>xcode-storage</code> keeps Xcode and CoreSimulator pointed at their normal paths while APFS sparsebundles carry the heavy data on external storage.
+          </p>
+          <div class="actions">
+            <a class="button" href="install.html">Start setup</a>
+            <a class="button secondary" href="commands.html">Read commands</a>
+          </div>
+        </div>
+
+        <h2>What it solves</h2>
+        <p>
+          Xcode installs, simulator device sets, DerivedData, archives, and CoreSimulator caches can consume hundreds of gigabytes. Moving those folders with symlinks is fragile, especially around CoreSimulator images and <code>simdiskimaged</code>. <code>xcode-storage</code> uses mounted APFS sparsebundles instead.
+        </p>
+
+        <div class="grid">
+          <article class="card">
+            <h3>Apple paths stay normal</h3>
+            <p>Tools still see paths such as <code>~/Library/Developer/CoreSimulator/Devices</code> and <code>/Library/Developer/CoreSimulator/Caches</code>.</p>
+          </article>
+          <article class="card">
+            <h3>No symlinked mount parents</h3>
+            <p>The mount manager rejects symlinked Apple paths because CoreSimulator can reject them.</p>
+          </article>
+          <article class="card">
+            <h3>Fail closed by default</h3>
+            <p>If a managed path is mounted from an unexpected backend, the tool refuses to detach it.</p>
+          </article>
+          <article class="card">
+            <h3>Repeatable repair</h3>
+            <p>LaunchAgents, LaunchDaemons, helpers, shims, and mount state are managed with repeatable commands.</p>
+          </article>
+        </div>
+
+        <h2>The short version</h2>
+        <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
+
+xcode-storage repair \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --install-shims \
+  --dry-run
+
+xcode-storage repair \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --install-shims \
+  --load
+
+sudo xcode-storage daemon install \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME"
+
+xcode-storage doctor \
+  --root "$XCODE_STORAGE_ROOT" \
+  --require-shims \
+  --strict</code></pre>
+
+        <h2>When to use mounts</h2>
+        <p>
+          Use the <code>mounts</code> group when you want Apple default paths backed directly by APFS sparsebundles:
+        </p>
+        <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
+sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all</code></pre>
+
+        <div class="warning">
+          <strong>Do not symlink CoreSimulator Images or Volumes.</strong>
+          Use mounted APFS sparsebundles. Xcode and <code>simdiskimaged</code> can reject symlinked mount parents.
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>

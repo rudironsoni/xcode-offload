@@ -34,6 +34,9 @@ jobs:
       - name: Guard against machine-specific defaults
         run: scripts/check-no-machine-defaults.sh
 
+      - name: Validate docs
+        run: scripts/check-docs.sh
+
       - name: Smoke version command
         run: .build/debug/xcode-storage version
 

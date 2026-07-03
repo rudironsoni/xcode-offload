@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Install xcode-storage</title>
+    <meta name="description" content="Configure xcode-storage with an explicit external storage root.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a href="index.html">Overview</a>
+        <a aria-current="page" href="install.html">Install</a>
+        <a href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a href="operations.html">Operations</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">setup</p>
+          <h1>Install it once, then let launchd keep the mounts alive.</h1>
+          <p class="lead">
+            User-owned work runs without sudo. The system cache helper is installed with sudo because it manages paths under <code>/Library/Developer</code>.
+          </p>
+        </div>
+
+        <h2>Install the CLI</h2>
+        <p>
+          Install <code>xcode-storage</code> so the command is available on your <code>PATH</code>. These docs assume the installed command is available as <code>xcode-storage</code>.
+        </p>
+        <pre><code>xcode-storage version</code></pre>
+
+        <h2>Pick a root</h2>
+        <p>
+          Choose the external volume yourself. The tool does not guess.
+        </p>
+        <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"</code></pre>
+
+        <h2>Preview user changes</h2>
+        <pre><code>xcode-storage repair \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --install-shims \
+  --dry-run</code></pre>
+
+        <h2>Install user-owned pieces</h2>
+        <pre><code>xcode-storage repair \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --install-shims \
+  --load</code></pre>
+        <p>
+          This installs the user LaunchAgent and optional shims. It does not write root-owned files.
+        </p>
+
+        <h2>Install the system helper</h2>
+        <pre><code>sudo xcode-storage daemon install \
+  --root "$XCODE_STORAGE_ROOT" \
+  --home "$HOME"</code></pre>
+        <p>
+          <code>daemon install</code> and <code>launchd install</code> install the same system LaunchDaemon and helper. Both spellings are kept because they describe the same privileged setup from different angles.
+        </p>
+
+        <h2>Run the doctor</h2>
+        <pre><code>xcode-storage doctor \
+  --root "$XCODE_STORAGE_ROOT" \
+  --require-shims \
+  --strict</code></pre>
+
+        <h2>Use APFS mount mode</h2>
+        <p>
+          If you want the full Apple-path mount manager, run the <code>mounts</code> group:
+        </p>
+        <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
+sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all</code></pre>
+
+        <div class="note">
+          Keep the external volume mounted before launching Xcode or Simulator. If the volume is missing, launchd jobs can only log the missing root and wait for the next interval.
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>

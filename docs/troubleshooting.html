@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xcode-storage troubleshooting</title>
+    <meta name="description" content="Troubleshoot xcode-storage mount and launchd issues.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a href="index.html">Overview</a>
+        <a href="install.html">Install</a>
+        <a href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a href="operations.html">Operations</a>
+        <a aria-current="page" href="troubleshooting.html">Troubleshooting</a>
+        <a href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">debugging</p>
+          <h1>Prove the mount state first.</h1>
+          <p class="lead">
+            Most failures are path, mount, or launchd state issues. Check those before changing Xcode or deleting simulator data.
+          </p>
+        </div>
+
+        <h2>Doctor fails</h2>
+        <pre><code>xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict --json</code></pre>
+        <p>
+          Use JSON when you need exact labels and details. The human output is better for quick terminal checks.
+        </p>
+
+        <h2>External root is missing</h2>
+        <p>
+          Mount the external volume, then run the doctor again. The tool will not pick a fallback volume for you.
+        </p>
+
+        <h2>Managed path is a symlink</h2>
+        <p>
+          Replace the symlink with a real directory before using <code>mounts install</code>. Symlinked mount parents can fail under CoreSimulator.
+        </p>
+
+        <h2>Managed path uses another backend</h2>
+        <p>
+          The tool refuses to detach it. Inspect the current mount and decide whether it belongs to another setup.
+        </p>
+        <pre><code>mount | grep CoreSimulator
+hdiutil info</code></pre>
+
+        <h2>CoreSimulator cache is not mounted</h2>
+        <p>
+          Reload the system daemon or reinstall it with the current root and home.
+        </p>
+        <pre><code>sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
+xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --strict</code></pre>
+
+        <h2>simctl is slow after a fresh simulator</h2>
+        <p>
+          Recent iOS runtimes can spend several minutes in first-boot migration. <code>sim recreate --boot</code> defaults to a long timeout for that reason.
+        </p>
+
+        <h2>Backups are taking space</h2>
+        <p>
+          <code>xcode-storage</code> never deletes backups automatically. Review and remove old backup directories yourself after confirming the current mount state is healthy.
+        </p>
+        <pre><code>find "$XCODE_STORAGE_ROOT/Xcode/Backups/mounts" -maxdepth 2 -type f -name '*.manifest' -print</code></pre>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>

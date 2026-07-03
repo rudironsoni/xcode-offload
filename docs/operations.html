@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xcode-storage operations</title>
+    <meta name="description" content="Common operating flows for xcode-storage.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a href="index.html">Overview</a>
+        <a href="install.html">Install</a>
+        <a href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a aria-current="page" href="operations.html">Operations</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">runbooks</p>
+          <h1>Common operations</h1>
+          <p class="lead">
+            These flows cover install, verification, Apple-tool checks, and rollback.
+          </p>
+        </div>
+
+        <h2>Install on a new machine</h2>
+        <ol>
+          <li>Mount the external volume.</li>
+          <li>Set <code>XCODE_STORAGE_ROOT</code> to a path on that volume.</li>
+          <li>Run <code>repair --dry-run</code> and read the plan.</li>
+          <li>Run user repair with <code>--load</code>.</li>
+          <li>Install the system daemon with sudo.</li>
+          <li>Run <code>doctor --strict</code>.</li>
+        </ol>
+        <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
+xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --dry-run
+xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --load
+sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
+xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict</code></pre>
+
+        <h2>Enable APFS mount mode</h2>
+        <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --dry-run
+xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
+sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
+xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all</code></pre>
+
+        <h2>Verify in a scratch root</h2>
+        <pre><code>xcode-storage mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
+  --mode user</code></pre>
+        <p>
+          This creates disposable sparsebundles, mounts them, checks status, unmounts them, and removes the scratch run directory.
+        </p>
+
+        <h2>Run Apple tools without shims</h2>
+        <pre><code>PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcrun simctl list devices available
+PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version</code></pre>
+        <p>
+          If APFS mount mode is working, these commands should see the mounted Apple paths without any shim involvement.
+        </p>
+
+        <h2>Back out user mount mode</h2>
+        <pre><code>xcode-storage mounts uninstall --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --unload</code></pre>
+
+        <h2>Back out system mount mode</h2>
+        <pre><code>sudo xcode-storage mounts uninstall --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --unload</code></pre>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>

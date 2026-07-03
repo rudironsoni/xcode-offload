@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xcode-storage concepts</title>
+    <meta name="description" content="How xcode-storage uses APFS sparsebundles, launchd jobs, and optional shims.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a href="index.html">Overview</a>
+        <a href="install.html">Install</a>
+        <a aria-current="page" href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a href="operations.html">Operations</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">model</p>
+          <h1>Apple paths stay real.</h1>
+          <p class="lead">
+            The transparent mode makes Apple expected paths real mountpoints backed by external APFS sparsebundles. Shims can help with explicit flag routing, but they are not the storage mechanism.
+          </p>
+        </div>
+
+        <h2>Storage root</h2>
+        <p>
+          Every command accepts <code>--root PATH</code>, or reads <code>XCODE_STORAGE_ROOT</code>. The root should be a mounted external volume or another writable storage location you chose explicitly.
+        </p>
+        <pre><code>/Volumes/YourExternalVolume/Xcode/
+  CoreSimulator/
+    DeviceSet.sparsebundle
+    Caches.sparsebundle
+    Images.sparsebundle
+    Volumes.sparsebundle
+  XcodeDefaults/
+    DerivedData.sparsebundle
+    Archives.sparsebundle
+  Backups/
+    mounts/</code></pre>
+
+        <h2>Managed Apple paths</h2>
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Scope</th><th>Backend</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>~/Library/Developer/CoreSimulator/Devices</code></td><td>User</td><td><code>DeviceSet.sparsebundle</code></td></tr>
+            <tr><td><code>~/Library/Developer/Xcode/DerivedData</code></td><td>User</td><td><code>DerivedData.sparsebundle</code></td></tr>
+            <tr><td><code>~/Library/Developer/Xcode/Archives</code></td><td>User</td><td><code>Archives.sparsebundle</code></td></tr>
+            <tr><td><code>/Library/Developer/CoreSimulator/Caches</code></td><td>System</td><td><code>Caches.sparsebundle</code></td></tr>
+            <tr><td><code>/Library/Developer/CoreSimulator/Images</code></td><td>System</td><td><code>Images.sparsebundle</code></td></tr>
+            <tr><td><code>/Library/Developer/CoreSimulator/Volumes</code></td><td>System</td><td><code>Volumes.sparsebundle</code></td></tr>
+          </tbody>
+        </table>
+
+        <h2>Why APFS sparsebundles</h2>
+        <p>
+          Sparsebundles keep large developer data outside the internal disk while still giving macOS a normal APFS filesystem at the mountpoint. They also let the tool check ownership, filesystem type, and backend provenance with <code>diskutil</code>, <code>mount</code>, and <code>hdiutil info</code>.
+        </p>
+
+        <h2>Why not symlinks</h2>
+        <p>
+          CoreSimulator and <code>simdiskimaged</code> can reject symlinked mount parents. <code>xcode-storage</code> treats symlinked managed paths as invalid and refuses to proceed until they are replaced with real directories.
+        </p>
+
+        <h2>Launchd responsibilities</h2>
+        <p>
+          The user LaunchAgent remounts user-owned paths. The system LaunchDaemon runs a root-owned helper for <code>/Library/Developer/CoreSimulator/*</code> paths. <code>daemon install</code> and <code>launchd install</code> install the same system job.
+        </p>
+
+        <h2>Shims are optional</h2>
+        <p>
+          Shims are useful for explicit argument routing, build products, archives, and <code>TMPDIR</code>. They are optional when APFS mount mode is active.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>

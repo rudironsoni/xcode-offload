@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>xcode-storage releases</title>
+    <meta name="description" content="Release policy for xcode-storage users.">
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="index.html">
+          <strong>xcode-storage</strong>
+          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary">
+          <a href="install.html">Install</a>
+          <a href="concepts.html">Concepts</a>
+          <a href="commands.html">Commands</a>
+          <a href="operations.html">Operations</a>
+          <a href="troubleshooting.html">Troubleshooting</a>
+          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Docs</h2>
+        <a href="index.html">Overview</a>
+        <a href="install.html">Install</a>
+        <a href="concepts.html">Concepts</a>
+        <a href="commands.html">Commands</a>
+        <a href="operations.html">Operations</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a aria-current="page" href="release.html">Release</a>
+      </aside>
+
+      <section class="content">
+        <div class="hero">
+          <p class="eyebrow">releases</p>
+          <h1>Release policy</h1>
+          <p class="lead">
+            Releases use SemVer tags and publish a macOS artifact through GitHub Releases.
+          </p>
+        </div>
+
+        <h2>Version format</h2>
+        <p>
+          Release tags use the form <code>vMAJOR.MINOR.PATCH</code>, for example <code>v0.1.0</code>. The installed tool reports the release version with:
+        </p>
+        <pre><code>xcode-storage version</code></pre>
+
+        <h2>Release notes</h2>
+        <p>
+          User-facing changes are recorded in <code>CHANGELOG.md</code>. GitHub Releases attach the packaged macOS artifact and checksum for the tag.
+        </p>
+
+        <h2>GitHub automation</h2>
+        <p>
+          The repository uses GitHub Actions for CI, release preparation, release publishing, and this documentation site. The workflows are part of the repository so release behavior is reviewable with the code.
+        </p>
+
+        <h2>Before upgrading</h2>
+        <p>
+          Run the doctor before and after an upgrade. That gives you a clear before-and-after view of mount state, launchd jobs, and shim health.
+        </p>
+        <pre><code>xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict</code></pre>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+      </div>
+    </footer>
+  </body>
+</html>
