@@ -118,6 +118,10 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         "\(xcodeRoot)/XcodeDefaults/Archives.sparsebundle"
     }
 
+    public var mountXcodeAppsImage: String {
+        "\(xcodeRoot)/XcodeApps.sparsebundle"
+    }
+
     public var mountImagesMount: String {
         "/Library/Developer/CoreSimulator/Images"
     }
@@ -132,6 +136,10 @@ public struct StorageConfig: Codable, Equatable, Sendable {
 
     public var mountArchivesMount: String {
         "\(home)/Library/Developer/Xcode/Archives"
+    }
+
+    public var mountXcodeAppsMount: String {
+        "/Applications/Xcodes"
     }
 }
 

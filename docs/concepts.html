@@ -74,6 +74,7 @@
             <tr><td><code>/Library/Developer/CoreSimulator/Caches</code></td><td>System</td><td><code>Caches.sparsebundle</code></td></tr>
             <tr><td><code>/Library/Developer/CoreSimulator/Images</code></td><td>System</td><td><code>Images.sparsebundle</code></td></tr>
             <tr><td><code>/Library/Developer/CoreSimulator/Volumes</code></td><td>System</td><td><code>Volumes.sparsebundle</code></td></tr>
+            <tr><td><code>/Applications/Xcodes</code></td><td>System</td><td><code>XcodeApps.sparsebundle</code></td></tr>
           </tbody>
         </table>
 
@@ -90,6 +91,11 @@
         <h2>Launchd responsibilities</h2>
         <p>
           The user LaunchAgent remounts user-owned paths. The system LaunchDaemon runs a root-owned helper for <code>/Library/Developer/CoreSimulator/*</code>. <code>daemon install</code> and <code>launchd install</code> install the same system job.
+        </p>
+
+        <h2>xcodes compatibility</h2>
+        <p>
+          The <code>xcodes</code> profile keeps installed Xcode apps under <code>/Applications/Xcodes</code>, backed by APFS. Set <code>XCODES_DIRECTORY</code> to that path so <code>xcodes</code> installs there, then use <code>xcode-select</code> as usual.
         </p>
 
         <h2>Shims are optional</h2>

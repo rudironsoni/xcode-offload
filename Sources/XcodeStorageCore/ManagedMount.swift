@@ -127,6 +127,16 @@ public enum ManagedMounts {
                 defaultSize: "50g",
                 requiredOwner: "root:wheel",
                 requiredMode: "0755"
+            ),
+            ManagedMount(
+                id: "xcode-apps",
+                scope: .system,
+                imagePath: config.mountXcodeAppsImage,
+                mountPoint: config.mountXcodeAppsMount,
+                volumeName: "XcodeApps",
+                defaultSize: "500g",
+                requiredOwner: "root:wheel",
+                requiredMode: "0755"
             )
         ]
     }

@@ -151,10 +151,20 @@ smoke-cli:
 	if "$$bin" mounts install --root "$$tmp/External Disk" --home "$$tmp/Home" --scope system --dry-run >"$$tmp/mounts-system.out" 2>"$$tmp/mounts-system.err"; then \
 	  output="$$(cat "$$tmp/mounts-system.out")"; \
 	  require_output "mounts system install dry-run" "/Library/Developer/CoreSimulator/Images" "$$output"; \
+	  require_output "mounts system install dry-run" "/Applications/Xcodes" "$$output"; \
 	  require_output "mounts system install dry-run" "chmod 1777" "$$output"; \
 	else \
 	  grep -F "mountpoint is already mounted from a different backend" "$$tmp/mounts-system.err" >/dev/null; \
 	fi; \
+	if "$$bin" xcodes install-profile --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run >"$$tmp/xcodes-profile.out" 2>"$$tmp/xcodes-profile.err"; then \
+	  output="$$(cat "$$tmp/xcodes-profile.out")"; \
+	  require_output "xcodes profile dry-run" "XcodeApps.sparsebundle" "$$output"; \
+	  require_output "xcodes profile dry-run" "/bin/launchctl setenv XCODES_DIRECTORY /Applications/Xcodes" "$$output"; \
+	else \
+	  grep -F "mountpoint is already mounted from a different backend" "$$tmp/xcodes-profile.err" >/dev/null; \
+	fi; \
+	output="$$("$$bin" xcodes env install --directory /Applications/Xcodes --dry-run)"; \
+	require_output "xcodes env install dry-run" "export XCODES_DIRECTORY=/Applications/Xcodes" "$$output"; \
 	if "$$bin" doctor --root "$$tmp/missing-root" --skip-simctl --json >"$$tmp/doctor.json" 2>"$$tmp/doctor.err"; then \
 	  echo "expected doctor to fail for missing root" >&2; \
 	  exit 1; \

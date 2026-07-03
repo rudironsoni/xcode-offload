@@ -93,6 +93,14 @@ xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|
 xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
 xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]</code></pre>
 
+        <h2>xcodes compatibility</h2>
+        <pre><code>xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]</code></pre>
+        <p>
+          <code>xcodes install-profile</code> prepares APFS-backed Apple paths for xcodes and standard Xcode tools. It does not require command shims.
+        </p>
+
         <h2>Simulator helpers</h2>
         <pre><code>xcode-storage sim runtimes
 xcode-storage sim devices [--all]

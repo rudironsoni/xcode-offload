@@ -6,9 +6,10 @@ import Testing
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
     let mounts = ManagedMounts.all(config: config)
 
-    #expect(mounts.map(\.id) == ["devices", "derived-data", "archives", "caches", "images", "volumes"])
+    #expect(mounts.map(\.id) == ["devices", "derived-data", "archives", "caches", "images", "volumes", "xcode-apps"])
     #expect(mounts.first { $0.id == "images" }?.mountPoint == "/Library/Developer/CoreSimulator/Images")
     #expect(mounts.first { $0.id == "volumes" }?.mountPoint == "/Library/Developer/CoreSimulator/Volumes")
+    #expect(mounts.first { $0.id == "xcode-apps" }?.mountPoint == "/Applications/Xcodes")
     #expect(mounts.first { $0.id == "derived-data" }?.mountPoint == "/Users/rudi/Library/Developer/Xcode/DerivedData")
     #expect(mounts.allSatisfy { $0.imagePath.hasPrefix("/Volumes/ExternalXcode/Xcode/") })
     #expect(mounts.first { $0.id == "images" }?.preparation == .coreSimulatorImages)
@@ -110,6 +111,7 @@ import Testing
     try assertZshSyntaxPasses(templates.systemHelper)
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Images"))
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Volumes"))
+    #expect(templates.systemHelper.contains("/Applications/Xcodes"))
     #expect(!templates.systemHelper.localizedCaseInsensitiveContains("ln -s"))
 }
 
@@ -291,10 +293,12 @@ private func createMountFixture(config: StorageConfig) throws {
             atPath: managedMount.imagePath,
             withIntermediateDirectories: true
         )
-        try FileManager.default.createDirectory(
-            atPath: managedMount.mountPoint,
-            withIntermediateDirectories: true
-        )
+        if managedMount.mountPoint.hasPrefix(config.home) {
+            try FileManager.default.createDirectory(
+                atPath: managedMount.mountPoint,
+                withIntermediateDirectories: true
+            )
+        }
     }
 }
 

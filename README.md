@@ -18,6 +18,7 @@ Docs: https://rudironsoni.github.io/xcode-storage/
 - `/Library/Developer/CoreSimulator/Caches`
 - `/Library/Developer/CoreSimulator/Images`
 - `/Library/Developer/CoreSimulator/Volumes`
+- `/Applications/Xcodes`
 - optional `xcrun`, `simctl`, and `xcodebuild` shims for explicit flag routing
 
 The storage root is your choice:
@@ -130,6 +131,7 @@ xcode-storage install-shims
 xcode-storage daemon install
 xcode-storage launchd install
 xcode-storage mounts install|repair|status|verify|uninstall
+xcode-storage xcodes install-profile|doctor|env
 xcode-storage sim runtimes|devices|recreate|open
 ```
 

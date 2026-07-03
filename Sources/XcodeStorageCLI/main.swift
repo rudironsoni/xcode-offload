@@ -50,6 +50,8 @@ struct CLI {
             try launchd(arguments: &arguments)
         case "mounts":
             try mounts(arguments: &arguments)
+        case "xcodes":
+            try xcodes(arguments: &arguments)
         case "sim":
             try sim(arguments: &arguments)
         case "wrap-xcrun":
@@ -348,6 +350,102 @@ struct CLI {
         }
     }
 
+    private func xcodes(arguments: inout Arguments) throws {
+        let subcommand = arguments.popCommand() ?? "help"
+
+        switch subcommand {
+        case "install-profile":
+            try xcodesInstallProfile(arguments: &arguments)
+        case "doctor":
+            try xcodesDoctor(arguments: &arguments)
+        case "env":
+            try xcodesEnv(arguments: &arguments)
+        case "help", "-h", "--help":
+            printXcodesHelp()
+        default:
+            throw CommandError("unknown xcodes command: \(subcommand)", exitCode: 64)
+        }
+    }
+
+    private func xcodesInstallProfile(arguments: inout Arguments) throws {
+        let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
+        let dryRun = arguments.popFlag("--dry-run")
+        let load = arguments.popFlag("--load")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let actions = try XcodesCompatibilityActions().installProfile(
+            config: config,
+            toolPath: toolPath,
+            load: load,
+            dryRun: dryRun
+        )
+        actions.forEach { print($0) }
+    }
+
+    private func xcodesDoctor(arguments: inout Arguments) throws {
+        let json = arguments.popFlag("--json")
+        let requireXcodes = arguments.popFlag("--require-xcodes")
+        let strict = arguments.popFlag("--strict")
+        let config = try makeConfig(arguments: &arguments)
+        try arguments.rejectUnknown()
+
+        let report = XcodesCompatibilityActions().doctor(
+            config: config,
+            requireXcodes: requireXcodes,
+            strict: strict
+        )
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            FileHandle.standardOutput.write(try encoder.encode(report))
+            print()
+        } else {
+            for check in report.checks {
+                print(check.humanLine)
+            }
+
+            if report.passed {
+                print("OK xcode-storage xcodes doctor passed")
+            } else {
+                FileHandle.standardError.write(Data("FAIL xcode-storage xcodes doctor found \(report.failureCount) issue(s)\n".utf8))
+            }
+        }
+
+        if !report.passed {
+            throw ExitRequested(code: 1)
+        }
+    }
+
+    private func xcodesEnv(arguments: inout Arguments) throws {
+        let subcommand = arguments.popCommand() ?? "help"
+
+        switch subcommand {
+        case "install":
+            let directory = arguments.popOption("--directory")
+            let dryRun = arguments.popFlag("--dry-run")
+            let resolvedDirectory: String
+            if let directory {
+                try arguments.rejectUnknown()
+                resolvedDirectory = directory
+            } else {
+                let config = try makeConfig(arguments: &arguments)
+                try arguments.rejectUnknown()
+                resolvedDirectory = config.mountXcodeAppsMount
+            }
+
+            let actions = try XcodesCompatibilityActions().installEnvironment(
+                directory: resolvedDirectory,
+                dryRun: dryRun
+            )
+            actions.forEach { print($0) }
+        case "help", "-h", "--help":
+            printXcodesHelp()
+        default:
+            throw CommandError("unknown xcodes env command: \(subcommand)", exitCode: 64)
+        }
+    }
+
     private func installSystemLaunchd(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let dryRun = arguments.popFlag("--dry-run")
@@ -498,6 +596,9 @@ struct CLI {
               xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
               xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+              xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
               xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
               xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
               xcode-storage sim runtimes
@@ -543,6 +644,22 @@ struct CLI {
               xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
             This mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
+            """
+        )
+    }
+
+    private func printXcodesHelp() {
+        print(
+            """
+            xcode-storage xcodes configures transparent storage for xcodes and Apple tools.
+
+            Usage:
+              xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+              xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
+
+            The profile mounts APFS sparsebundles at Apple paths and sets XCODES_DIRECTORY.
+            It does not install xcrun, simctl, or xcodebuild shims.
             """
         )
     }
