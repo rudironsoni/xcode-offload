@@ -82,6 +82,102 @@ import Testing
     #expect(plan.contains("xcrun simctl boot BOOTED-UDID"))
 }
 
+@Test func simulatorOpenByNameSkipsBootWhenDeviceIsAlreadyBooted() throws {
+    let runner = RecordingRunner { executable, arguments, environment in
+        switch (executable, arguments) {
+        case ("/usr/bin/xcrun", ["simctl", "list", "devices", "available"]):
+            return ProcessResult(
+                exitCode: 0,
+                stdout: """
+                == Devices ==
+                -- iOS 26.5 --
+                    Orlix-iPhone-15-Pro-Max (C47ED88D-0D0A-420D-8C78-D4C1D34A276D) (Booted)
+                """,
+                stderr: ""
+            )
+        case ("/usr/bin/xcrun", ["simctl", "boot", "C47ED88D-0D0A-420D-8C78-D4C1D34A276D"]):
+            Issue.record("open should not call simctl boot when the parsed device is already Booted")
+            return ProcessResult(exitCode: 2, stdout: "", stderr: "Unable to boot device in current state: Booted")
+        case ("/usr/bin/xcrun", ["simctl", "bootstatus", "C47ED88D-0D0A-420D-8C78-D4C1D34A276D", "-b"]):
+            #expect(environment["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT"] == "7")
+            return ProcessResult(exitCode: 0, stdout: "Device already booted, nothing to do.\n", stderr: "")
+        case ("/usr/bin/open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", "C47ED88D-0D0A-420D-8C78-D4C1D34A276D"]):
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ("/usr/bin/osascript", ["-e", "tell application \"Simulator\" to activate"]):
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        default:
+            return ProcessResult(exitCode: 99, stdout: "", stderr: "unexpected \(executable) \(arguments)")
+        }
+    }
+
+    let plan = try SimulatorActions(runner: runner).open(
+        name: "Orlix-iPhone-15-Pro-Max",
+        udid: nil,
+        bootTimeoutSeconds: 7
+    )
+
+    #expect(plan == [
+        "xcrun simctl boot C47ED88D-0D0A-420D-8C78-D4C1D34A276D # already booted",
+        "xcrun simctl bootstatus C47ED88D-0D0A-420D-8C78-D4C1D34A276D -b",
+        "open -a Simulator --args -CurrentDeviceUDID C47ED88D-0D0A-420D-8C78-D4C1D34A276D",
+        "osascript -e 'tell application \"Simulator\" to activate'"
+    ])
+}
+
+@Test func simulatorOpenByUDIDAcceptsAlreadyBootedError() throws {
+    let runner = RecordingRunner { executable, arguments, _ in
+        switch (executable, arguments) {
+        case ("/usr/bin/xcrun", ["simctl", "boot", "BOOTED-UDID"]):
+            return ProcessResult(exitCode: 2, stdout: "", stderr: "Unable to boot device in current state: Booted")
+        case ("/usr/bin/xcrun", ["simctl", "bootstatus", "BOOTED-UDID", "-b"]):
+            return ProcessResult(exitCode: 0, stdout: "Device already booted, nothing to do.\n", stderr: "")
+        case ("/usr/bin/open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", "BOOTED-UDID"]):
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ("/usr/bin/osascript", ["-e", "tell application \"Simulator\" to activate"]):
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        default:
+            return ProcessResult(exitCode: 99, stdout: "", stderr: "unexpected \(executable) \(arguments)")
+        }
+    }
+
+    let plan = try SimulatorActions(runner: runner).open(
+        name: nil,
+        udid: "BOOTED-UDID",
+        bootTimeoutSeconds: 5
+    )
+
+    #expect(plan.contains("xcrun simctl boot BOOTED-UDID"))
+    #expect(plan.contains("open -a Simulator --args -CurrentDeviceUDID BOOTED-UDID"))
+}
+
+@Test func simulatorOpenByNameRequiresUDIDWhenNameIsAmbiguous() {
+    let runner = RecordingRunner { _, arguments, _ in
+        switch arguments {
+        case ["simctl", "list", "devices", "available"]:
+            return ProcessResult(
+                exitCode: 0,
+                stdout: """
+                == Devices ==
+                -- iOS 26.5 --
+                    Orlix (FIRST-UDID) (Shutdown)
+                    Orlix (SECOND-UDID) (Shutdown)
+                """,
+                stderr: ""
+            )
+        default:
+            return ProcessResult(exitCode: 99, stdout: "", stderr: "unexpected \(arguments)")
+        }
+    }
+
+    #expect(throws: CommandError.self) {
+        _ = try SimulatorActions(runner: runner).open(
+            name: "Orlix",
+            udid: nil,
+            bootTimeoutSeconds: 5
+        )
+    }
+}
+
 @Test func simulatorRecreateFailsWhenBootstatusFails() {
     let runner = RecordingRunner { _, arguments, _ in
         switch arguments {
@@ -122,4 +218,3 @@ private final class RecordingRunner: CommandRunning, @unchecked Sendable {
         try handler(executable, arguments, environment)
     }
 }
-

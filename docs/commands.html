@@ -96,9 +96,11 @@ xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home
         <h2>Simulator helpers</h2>
         <pre><code>xcode-storage sim runtimes
 xcode-storage sim devices [--all]
-xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]</code></pre>
+xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+xcode-storage sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]</code></pre>
         <p>
           <code>sim recreate</code> deletes an existing simulator with the same name, creates a fresh one, and can boot it. First boot can be slow on recent iOS runtimes, so the boot timeout is intentionally long.
+          <code>sim open</code> is idempotent: a simulator that is already booted is treated as ready, then Simulator is opened for that device.
         </p>
       </section>
     </main>

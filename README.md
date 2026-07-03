@@ -130,7 +130,7 @@ xcode-storage install-shims
 xcode-storage daemon install
 xcode-storage launchd install
 xcode-storage mounts install|repair|status|verify|uninstall
-xcode-storage sim runtimes|devices|recreate
+xcode-storage sim runtimes|devices|recreate|open
 ```
 
 The docs site has the command reference, runbooks, and troubleshooting notes.

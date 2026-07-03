@@ -393,6 +393,18 @@ struct CLI {
                 bootTimeoutSeconds: timeout
             )
             actions.forEach { print($0) }
+        case "open":
+            let name = arguments.popOption("--name")
+            let udid = arguments.popOption("--udid")
+            let timeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
+            try arguments.rejectUnknown()
+
+            let actions = try simulator.open(
+                name: name,
+                udid: udid,
+                bootTimeoutSeconds: timeout
+            )
+            actions.forEach { print($0) }
         default:
             throw CommandError("unknown sim command: \(subcommand)", exitCode: 64)
         }
@@ -491,6 +503,7 @@ struct CLI {
               xcode-storage sim runtimes
               xcode-storage sim devices [--all]
               xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+              xcode-storage sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]
             """
         )
     }
