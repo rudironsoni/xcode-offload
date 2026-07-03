@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -40,21 +40,21 @@
       <section class="content">
         <div class="hero">
           <p class="eyebrow">debugging</p>
-          <h1>Prove the mount state first.</h1>
+          <h1>Check the mount state first.</h1>
           <p class="lead">
-            Most failures are path, mount, or launchd state issues. Check those before changing Xcode or deleting simulator data.
+            Most problems come from a missing volume, a stale mount, or launchd state. Prove those before deleting simulator data or changing Xcode.
           </p>
         </div>
 
         <h2>Doctor fails</h2>
         <pre><code>xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict --json</code></pre>
         <p>
-          Use JSON when you need exact labels and details. The human output is better for quick terminal checks.
+          Use JSON when you need exact labels and details. Use the normal output for quick terminal checks.
         </p>
 
         <h2>External root is missing</h2>
         <p>
-          Mount the external volume, then run the doctor again. The tool will not pick a fallback volume for you.
+          Mount the external volume, then run the doctor again. The tool will not choose a fallback volume.
         </p>
 
         <h2>Managed path is a symlink</h2>
@@ -64,26 +64,26 @@
 
         <h2>Managed path uses another backend</h2>
         <p>
-          The tool refuses to detach it. Inspect the current mount and decide whether it belongs to another setup.
+          The tool refuses to detach it. Inspect the current mount before deciding what owns it.
         </p>
         <pre><code>mount | grep CoreSimulator
 hdiutil info</code></pre>
 
         <h2>CoreSimulator cache is not mounted</h2>
         <p>
-          Reload the system daemon or reinstall it with the current root and home.
+          Reload the system daemon, or reinstall it with the current root and home.
         </p>
         <pre><code>sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
 xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --strict</code></pre>
 
         <h2>simctl is slow after a fresh simulator</h2>
         <p>
-          Recent iOS runtimes can spend several minutes in first-boot migration. <code>sim recreate --boot</code> defaults to a long timeout for that reason.
+          Recent iOS runtimes can spend several minutes in first-boot migration. <code>sim recreate --boot</code> uses a long timeout for that reason.
         </p>
 
         <h2>Backups are taking space</h2>
         <p>
-          <code>xcode-storage</code> never deletes backups automatically. Review and remove old backup directories yourself after confirming the current mount state is healthy.
+          <code>xcode-storage</code> never deletes backups automatically. Review old backup directories after the current mount state is healthy.
         </p>
         <pre><code>find "$XCODE_STORAGE_ROOT/Xcode/Backups/mounts" -maxdepth 2 -type f -name '*.manifest' -print</code></pre>
       </section>

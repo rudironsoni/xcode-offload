@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -42,7 +42,7 @@
           <p class="eyebrow">runbooks</p>
           <h1>Common operations</h1>
           <p class="lead">
-            These flows cover install, verification, Apple-tool checks, and rollback.
+            These flows cover setup, mount verification, Apple-tool checks, and rollback.
           </p>
         </div>
 
@@ -72,14 +72,14 @@ xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope 
   --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
   --mode user</code></pre>
         <p>
-          This creates disposable sparsebundles, mounts them, checks status, unmounts them, and removes the scratch run directory.
+          The command creates disposable sparsebundles, mounts them, checks status, unmounts them, and removes the scratch run directory.
         </p>
 
         <h2>Run Apple tools without shims</h2>
         <pre><code>PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcrun simctl list devices available
 PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version</code></pre>
         <p>
-          If APFS mount mode is working, these commands should see the mounted Apple paths without any shim involvement.
+          If APFS mount mode is working, these commands should see the mounted Apple paths without shim involvement.
         </p>
 
         <h2>Back out user mount mode</h2>

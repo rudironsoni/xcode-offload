@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -42,33 +42,33 @@
           <p class="eyebrow">reference</p>
           <h1>Command reference</h1>
           <p class="lead">
-            Commands are grouped by job. Use <code>--dry-run</code> before changing mount or launchd state.
+            Use <code>--dry-run</code> before a command changes mount state, launchd jobs, or files under Apple developer paths.
           </p>
         </div>
 
         <h2>Health checks</h2>
         <pre><code>xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]</code></pre>
         <p>
-          <code>doctor</code> checks expected directories, sparsebundles, mounts, launchd jobs, and optional shims. <code>--strict</code> adds APFS, provenance, plist, and launchd exit status checks.
+          <code>doctor</code> checks directories, sparsebundles, mounts, launchd jobs, and optional shims. <code>--strict</code> also checks APFS state, backend provenance, plist validity, and launchd exit status.
         </p>
 
         <h2>Repair</h2>
         <pre><code>xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]</code></pre>
         <p>
-          <code>repair</code> builds a plan to initialize storage, mount device and cache stores, install launchd jobs, and optionally install shims.
+          <code>repair</code> creates the storage root if needed, mounts the device and cache stores, installs launchd jobs, and can install shims.
         </p>
 
         <h2>Initialize storage</h2>
         <pre><code>xcode-storage init [--root PATH] [--dry-run] [--no-create-images]</code></pre>
         <p>
-          <code>init</code> creates the root directory structure and sparsebundles. Use <code>--no-create-images</code> when you only want the directory plan.
+          <code>init</code> creates the directory layout and sparsebundles. Use <code>--no-create-images</code> when you only want the directory layout.
         </p>
 
         <h2>Mount legacy stores</h2>
         <pre><code>xcode-storage mount devices|caches [--root PATH] [--dry-run]
 xcode-storage unmount devices|caches [--root PATH] [--dry-run]</code></pre>
         <p>
-          These commands manage the original device and cache sparsebundles used by the repair flow.
+          These commands manage the device and cache sparsebundles used by the repair flow.
         </p>
 
         <h2>Install shims</h2>
@@ -83,7 +83,7 @@ xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--
 xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
 xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]</code></pre>
         <p>
-          <code>daemon install</code> and <code>launchd install</code> are user-facing spellings for the system helper. The older <code>install-launchd</code> and <code>uninstall-launchd</code> commands remain available as lower-level operations.
+          <code>daemon install</code> and <code>launchd install</code> are the normal names for the system helper install. <code>install-launchd</code> and <code>uninstall-launchd</code> remain available for lower-level launchd work.
         </p>
 
         <h2>APFS mount manager</h2>
@@ -98,7 +98,7 @@ xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home
 xcode-storage sim devices [--all]
 xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]</code></pre>
         <p>
-          <code>sim recreate</code> deletes an existing simulator with the same name, creates a fresh one, and can boot it with a long timeout for first-run migration.
+          <code>sim recreate</code> deletes an existing simulator with the same name, creates a fresh one, and can boot it. First boot can be slow on recent iOS runtimes, so the boot timeout is intentionally long.
         </p>
       </section>
     </main>

@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -42,29 +42,29 @@
           <p class="eyebrow">releases</p>
           <h1>Release policy</h1>
           <p class="lead">
-            Releases use SemVer tags and publish a macOS artifact through GitHub Releases.
+            Releases use SemVer tags. GitHub Releases publish the macOS artifact and checksum.
           </p>
         </div>
 
         <h2>Version format</h2>
         <p>
-          Release tags use the form <code>vMAJOR.MINOR.PATCH</code>, for example <code>v0.1.0</code>. The installed tool reports the release version with:
+          Release tags use <code>vMAJOR.MINOR.PATCH</code>, for example <code>v0.1.0</code>. Check the installed version with:
         </p>
         <pre><code>xcode-storage version</code></pre>
 
         <h2>Release notes</h2>
         <p>
-          User-facing changes are recorded in <code>CHANGELOG.md</code>. GitHub Releases attach the packaged macOS artifact and checksum for the tag.
+          User-facing changes go in <code>CHANGELOG.md</code>. The GitHub Release for each tag includes the packaged macOS artifact and its checksum.
         </p>
 
         <h2>GitHub automation</h2>
         <p>
-          The repository uses GitHub Actions for CI, release preparation, release publishing, and this documentation site. The workflows are part of the repository so release behavior is reviewable with the code.
+          GitHub Actions runs CI, prepares releases, publishes releases, and deploys this docs site. The workflow files live in the repository with the rest of the code.
         </p>
 
         <h2>Before upgrading</h2>
         <p>
-          Run the doctor before and after an upgrade. That gives you a clear before-and-after view of mount state, launchd jobs, and shim health.
+          Run the doctor before and after an upgrade. That gives you a before-and-after view of mount state, launchd jobs, and shim health.
         </p>
         <pre><code>xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict</code></pre>
       </section>

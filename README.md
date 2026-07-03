@@ -1,11 +1,12 @@
 # xcode-storage
 
-`xcode-storage` moves Xcode and CoreSimulator state onto external storage while
-keeping Apple tools pointed at the paths they already expect.
+`xcode-storage` moves Xcode and CoreSimulator data to external storage without
+changing the paths Apple tools expect.
 
-It is built for Macs where Xcode, simulators, DerivedData, archives, and
-CoreSimulator caches are too large for the internal disk. The tool uses mounted
-APFS sparsebundles at Apple paths. It does not solve this with symlinks.
+It is for Macs where Xcode, simulators, DerivedData, archives, and
+CoreSimulator caches are eating the internal disk. The tool mounts APFS
+sparsebundles at the normal Apple paths. It does not use symlinks for those
+paths.
 
 Docs: https://rudironsoni.github.io/xcode-storage/
 
@@ -19,18 +20,17 @@ Docs: https://rudironsoni.github.io/xcode-storage/
 - `/Library/Developer/CoreSimulator/Volumes`
 - optional `xcrun`, `simctl`, and `xcodebuild` shims for explicit flag routing
 
-The mount manager backs those paths with APFS sparsebundles under a root you
-choose:
+The storage root is your choice:
 
 ```sh
 export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
 ```
 
-The tool never guesses a machine-specific external volume.
+`xcode-storage` never guesses a machine-specific volume.
 
 ## Quick start
 
-Install `xcode-storage`, then choose the external storage root explicitly:
+Install `xcode-storage`, then set the external storage root:
 
 ```sh
 export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
@@ -47,7 +47,7 @@ xcode-storage repair \
   --dry-run
 ```
 
-Install user-owned jobs and shims:
+Install the user LaunchAgent and shims:
 
 ```sh
 xcode-storage repair \
@@ -77,8 +77,8 @@ xcode-storage doctor \
 
 ## APFS mount mode
 
-Use the `mounts` command group when you want Apple tools to see normal Apple
-paths backed by APFS sparsebundles:
+Use `mounts` when you want Apple tools to see their normal paths backed by APFS
+sparsebundles:
 
 ```sh
 xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
@@ -86,21 +86,19 @@ sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --
 xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
 ```
 
-`mounts install` refuses symlinked Apple paths and refuses to detach a mount
-that belongs to a different backend. If a managed directory already contains
-data, the tool moves it under:
+`mounts install` rejects symlinked Apple paths. It also refuses to detach a
+mount that belongs to another backend. If a managed directory already contains
+data, the tool moves that data under:
 
 ```text
 $XCODE_STORAGE_ROOT/Xcode/Backups/mounts/<timestamp>/
 ```
 
-The tool does not delete backups for you.
+It never deletes backups for you.
 
 ## Verification
 
-`mounts verify` runs the mount workflow in a disposable scratch root. Use it on
-a dedicated machine or external volume when you want proof that the sparsebundle
-flow works end to end:
+`mounts verify` runs the mount flow in a disposable scratch root:
 
 ```sh
 xcode-storage mounts verify \
@@ -135,5 +133,4 @@ xcode-storage mounts install|repair|status|verify|uninstall
 xcode-storage sim runtimes|devices|recreate
 ```
 
-See the docs site for command examples, safety notes, launchd behavior, and
-troubleshooting.
+The docs site has the command reference, runbooks, and troubleshooting notes.

@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -40,9 +40,9 @@
       <section class="content">
         <div class="hero">
           <p class="eyebrow">macOS developer storage</p>
-          <h1>Move Xcode storage off the internal disk without confusing Apple tools.</h1>
+          <h1>Move Xcode storage off the internal disk.</h1>
           <p class="lead">
-            <code>xcode-storage</code> keeps Xcode and CoreSimulator pointed at their normal paths while APFS sparsebundles carry the heavy data on external storage.
+            <code>xcode-storage</code> mounts external APFS sparsebundles at the paths Xcode and CoreSimulator already use.
           </p>
           <div class="actions">
             <a class="button" href="install.html">Start setup</a>
@@ -50,9 +50,9 @@
           </div>
         </div>
 
-        <h2>What it solves</h2>
+        <h2>Why this exists</h2>
         <p>
-          Xcode installs, simulator device sets, DerivedData, archives, and CoreSimulator caches can consume hundreds of gigabytes. Moving those folders with symlinks is fragile, especially around CoreSimulator images and <code>simdiskimaged</code>. <code>xcode-storage</code> uses mounted APFS sparsebundles instead.
+          Xcode installs, simulator device sets, DerivedData, archives, and CoreSimulator caches can take hundreds of gigabytes. Symlinking those folders is fragile, especially around CoreSimulator images and <code>simdiskimaged</code>. This tool uses APFS mounts instead.
         </p>
 
         <div class="grid">
@@ -65,16 +65,16 @@
             <p>The mount manager rejects symlinked Apple paths because CoreSimulator can reject them.</p>
           </article>
           <article class="card">
-            <h3>Fail closed by default</h3>
-            <p>If a managed path is mounted from an unexpected backend, the tool refuses to detach it.</p>
+            <h3>Fails before it guesses</h3>
+            <p>If a managed path is mounted from an unexpected backend, the tool stops and asks you to inspect it.</p>
           </article>
           <article class="card">
-            <h3>Repeatable repair</h3>
-            <p>LaunchAgents, LaunchDaemons, helpers, shims, and mount state are managed with repeatable commands.</p>
+            <h3>Repair is repeatable</h3>
+            <p>LaunchAgents, LaunchDaemons, helpers, shims, and mount state are managed by commands you can run again.</p>
           </article>
         </div>
 
-        <h2>The short version</h2>
+        <h2>Basic setup</h2>
         <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
 
 xcode-storage repair \
@@ -100,9 +100,9 @@ xcode-storage doctor \
   --require-shims \
   --strict</code></pre>
 
-        <h2>When to use mounts</h2>
+        <h2>Mount mode</h2>
         <p>
-          Use the <code>mounts</code> group when you want Apple default paths backed directly by APFS sparsebundles:
+          Use <code>mounts</code> when you want the default Apple paths backed directly by APFS sparsebundles:
         </p>
         <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
 sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load

@@ -12,7 +12,7 @@
       <div class="header-inner">
         <a class="brand" href="index.html">
           <strong>xcode-storage</strong>
-          <span>APFS-backed storage for Xcode and CoreSimulator</span>
+          <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
           <a href="install.html">Install</a>
@@ -42,13 +42,13 @@
           <p class="eyebrow">model</p>
           <h1>Apple paths stay real.</h1>
           <p class="lead">
-            The transparent mode makes Apple expected paths real mountpoints backed by external APFS sparsebundles. Shims can help with explicit flag routing, but they are not the storage mechanism.
+            Transparent mode mounts external APFS sparsebundles at the paths Apple tools already use. Shims are optional. The mounts are the storage mechanism.
           </p>
         </div>
 
         <h2>Storage root</h2>
         <p>
-          Every command accepts <code>--root PATH</code>, or reads <code>XCODE_STORAGE_ROOT</code>. The root should be a mounted external volume or another writable storage location you chose explicitly.
+          Every command accepts <code>--root PATH</code>, or reads <code>XCODE_STORAGE_ROOT</code>. Point it at a mounted external volume or another writable location you chose.
         </p>
         <pre><code>/Volumes/YourExternalVolume/Xcode/
   CoreSimulator/
@@ -79,22 +79,22 @@
 
         <h2>Why APFS sparsebundles</h2>
         <p>
-          Sparsebundles keep large developer data outside the internal disk while still giving macOS a normal APFS filesystem at the mountpoint. They also let the tool check ownership, filesystem type, and backend provenance with <code>diskutil</code>, <code>mount</code>, and <code>hdiutil info</code>.
+          Sparsebundles keep the heavy data off the internal disk while giving macOS a normal APFS filesystem at the mountpoint. They also give the tool something concrete to inspect with <code>diskutil</code>, <code>mount</code>, and <code>hdiutil info</code>.
         </p>
 
         <h2>Why not symlinks</h2>
         <p>
-          CoreSimulator and <code>simdiskimaged</code> can reject symlinked mount parents. <code>xcode-storage</code> treats symlinked managed paths as invalid and refuses to proceed until they are replaced with real directories.
+          CoreSimulator and <code>simdiskimaged</code> can reject symlinked mount parents. <code>xcode-storage</code> treats a symlinked managed path as invalid. Replace it with a real directory before mounting.
         </p>
 
         <h2>Launchd responsibilities</h2>
         <p>
-          The user LaunchAgent remounts user-owned paths. The system LaunchDaemon runs a root-owned helper for <code>/Library/Developer/CoreSimulator/*</code> paths. <code>daemon install</code> and <code>launchd install</code> install the same system job.
+          The user LaunchAgent remounts user-owned paths. The system LaunchDaemon runs a root-owned helper for <code>/Library/Developer/CoreSimulator/*</code>. <code>daemon install</code> and <code>launchd install</code> install the same system job.
         </p>
 
         <h2>Shims are optional</h2>
         <p>
-          Shims are useful for explicit argument routing, build products, archives, and <code>TMPDIR</code>. They are optional when APFS mount mode is active.
+          Shims help with explicit argument routing, build products, archives, and <code>TMPDIR</code>. When APFS mount mode is active, default Apple tools can use the mounted paths without shims.
         </p>
       </section>
     </main>
