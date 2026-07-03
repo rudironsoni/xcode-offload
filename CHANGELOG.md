@@ -1,3 +1,21 @@
+## [0.2.0](https://github.com/rudironsoni/xcode-storage/compare/v0.1.0...v0.2.0) (2026-07-03)
+
+
+### Features
+
+* add native certification command ([61d332d](https://github.com/rudironsoni/xcode-storage/commit/61d332d9b56c393e6ebdb11d3d70a6d5bac5e444))
+* add native transparent storage mode ([7f6c857](https://github.com/rudironsoni/xcode-storage/commit/7f6c8571423c0f09d2790df62bdb0bf8f3ac7db9))
+
+
+### Bug Fixes
+
+* harden CoreSimulator mount management ([2dde021](https://github.com/rudironsoni/xcode-storage/commit/2dde021669d8fe05e48b9d98251ead0f54c74b36))
+* harden native storage verification ([5ca1b2b](https://github.com/rudironsoni/xcode-storage/commit/5ca1b2bf9f91727cde257227bde37008b7111443))
+* make native dry-runs fail closed ([cdf44e2](https://github.com/rudironsoni/xcode-storage/commit/cdf44e2347c6b7bd322d14c7414abbd9840d30cd))
+* make simulator open idempotent ([bc3090c](https://github.com/rudironsoni/xcode-storage/commit/bc3090c090bbe611e0f30b1019fa072cc54c92d8))
+* normalize cli smoke temp paths ([e35c87e](https://github.com/rudironsoni/xcode-storage/commit/e35c87e2a142ad284aa490b81708f010c86cc5b5))
+* reject native wrong-backend mounts ([56f3656](https://github.com/rudironsoni/xcode-storage/commit/56f365600c644fa1633a4936511d6175ad2c16c5))
+
 ## 0.1.0 (2026-07-02)
 
 
