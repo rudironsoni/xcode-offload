@@ -14,6 +14,19 @@ public enum TextParsers {
             }
     }
 
+    public static func mountedPaths(in mountOutput: String) -> [String] {
+        mountOutput
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .compactMap { mountedPath(fromMountLine: String($0)) }
+    }
+
+    public static func mountedPaths(under mountPoint: String, in mountOutput: String) -> [String] {
+        mountedPaths(in: mountOutput)
+            .filter { mountedPath in
+                isDescendant(path: mountedPath, of: mountPoint)
+            }
+    }
+
     public static func volumeName(fromDiskutilInfo output: String) -> String? {
         value(forDiskutilKey: "Volume Name", in: output)
     }
@@ -126,6 +139,20 @@ public enum TextParsers {
             }
         }
         return false
+    }
+
+    private static func isDescendant(path: String, of parent: String) -> Bool {
+        let parentCandidates = normalizedPathCandidates(for: parent).map { pathWithTrailingSlash($0) }
+        let pathCandidates = normalizedPathCandidates(for: path)
+        return pathCandidates.contains { candidate in
+            parentCandidates.contains { parentCandidate in
+                candidate.hasPrefix(parentCandidate)
+            }
+        }
+    }
+
+    private static func pathWithTrailingSlash(_ path: String) -> String {
+        path.hasSuffix("/") ? path : "\(path)/"
     }
 
     private static func normalizedPathCandidates(for path: String) -> Set<String> {

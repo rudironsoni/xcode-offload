@@ -193,13 +193,13 @@ public struct Doctor {
 
     private func strictLaunchdChecks(config: StorageConfig) -> [DoctorCheck] {
         [
-            pathExists(config.userLaunchAgentPath, label: "User LaunchAgent exists"),
-            pathExists(config.systemLaunchDaemonPath, label: "System LaunchDaemon exists"),
-            executableExists(config.cacheHelperPath, label: "Cache mount helper exists"),
-            plistLint(path: config.userLaunchAgentPath, label: "User LaunchAgent plist is valid"),
-            plistLint(path: config.systemLaunchDaemonPath, label: "System LaunchDaemon plist is valid"),
-            launchctlCheck(domain: "gui/\(getuid())", label: config.launchAgentLabel, displayName: "User LaunchAgent"),
-            launchctlCheck(domain: "system", label: config.launchDaemonLabel, displayName: "System LaunchDaemon")
+            pathExists(config.mountUserLaunchAgentPath, label: "Mount user LaunchAgent exists"),
+            pathExists(config.mountSystemLaunchDaemonPath, label: "Mount system LaunchDaemon exists"),
+            executableExists(config.mountSystemHelperPath, label: "Mount system helper exists"),
+            plistLint(path: config.mountUserLaunchAgentPath, label: "Mount user LaunchAgent plist is valid"),
+            plistLint(path: config.mountSystemLaunchDaemonPath, label: "Mount system LaunchDaemon plist is valid"),
+            launchctlCheck(domain: "gui/\(getuid())", label: config.mountUserLaunchAgentLabel, displayName: "Mount user LaunchAgent"),
+            launchctlCheck(domain: "system", label: config.mountSystemLaunchDaemonLabel, displayName: "Mount system LaunchDaemon")
         ]
     }
 
@@ -298,6 +298,10 @@ public struct Doctor {
         do {
             let result = try runner.run("/usr/bin/xcrun", arguments: ["simctl"] + arguments, environment: environment)
             if result.succeeded {
+                if arguments == ["list", "runtimes"],
+                   !result.stdout.contains("com.apple.CoreSimulator.SimRuntime") {
+                    return DoctorCheck(.fail, "simctl runtimes has available runtimes", detail: result.stdout.trimmingCharacters(in: .whitespacesAndNewlines))
+                }
                 return DoctorCheck(.pass, label)
             }
 

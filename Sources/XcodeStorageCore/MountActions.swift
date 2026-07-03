@@ -28,6 +28,9 @@ public struct MountActions {
         let mounts = ManagedMounts.matching(scope: scope, config: config)
         actions.append(contentsOf: try createSparsebundles(mounts: mounts, dryRun: dryRun))
         actions.append(contentsOf: try mount(mounts: mounts, config: config, dryRun: dryRun))
+        if includesSystemMounts(scope) {
+            actions.append(contentsOf: try scanAndMountRuntimes(dryRun: dryRun))
+        }
         actions.append(contentsOf: try installLaunchd(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun))
         return actions
     }
@@ -134,7 +137,13 @@ public struct MountActions {
     private func mount(mounts: [ManagedMount], config: StorageConfig, dryRun: Bool) throws -> [String] {
         var actions: [String] = []
         for managedMount in mounts {
-            actions.append(contentsOf: try mount(managedMount: managedMount, backupRoot: config.mountBackupRoot, dryRun: dryRun))
+            actions.append(
+                contentsOf: try mount(
+                    managedMount: managedMount,
+                    backupRoot: backupRoot(for: managedMount, config: config),
+                    dryRun: dryRun
+                )
+            )
         }
         return actions
     }
@@ -148,6 +157,7 @@ public struct MountActions {
             }
             throw CommandError("mountpoint is already mounted from a different backend: \(managedMount.mountPoint)", exitCode: 78)
         }
+        try rejectNestedMounts(under: managedMount.mountPoint)
 
         guard dryRun || fileManager.fileExists(atPath: managedMount.imagePath) else {
             throw CommandError("missing sparsebundle: \(managedMount.imagePath)", exitCode: 78)
@@ -399,6 +409,45 @@ public struct MountActions {
         if isSymlink(path) {
             throw CommandError("mountpoint must not be a symlink: \(path)", exitCode: 78)
         }
+    }
+
+    private func rejectNestedMounts(under mountPoint: String) throws {
+        guard let result = try? runner.run("/sbin/mount", arguments: [], environment: [:]), result.succeeded else {
+            return
+        }
+        let nestedMounts = TextParsers.mountedPaths(under: mountPoint, in: result.stdout)
+        guard !nestedMounts.isEmpty else {
+            return
+        }
+
+        throw CommandError(
+            """
+            mountpoint contains active nested mounts: \(nestedMounts.joined(separator: ", "))
+            Shut down simulators and detach those mounts before mounting \(mountPoint).
+            """,
+            exitCode: 78
+        )
+    }
+
+    private func backupRoot(for managedMount: ManagedMount, config: StorageConfig) -> String {
+        switch managedMount.scope {
+        case .user:
+            config.mountUserBackupRoot
+        case .system:
+            config.mountSystemBackupRoot
+        }
+    }
+
+    private func includesSystemMounts(_ scope: LaunchdScope) -> Bool {
+        scope == .system || scope == .all
+    }
+
+    private func scanAndMountRuntimes(dryRun: Bool) throws -> [String] {
+        let command = ["/usr/bin/xcrun", "simctl", "runtime", "scan-and-mount"]
+        if !dryRun {
+            try runOrThrow(command)
+        }
+        return [command.map(\.shellQuoted).joined(separator: " ")]
     }
 
     private func isSymlink(_ path: String) -> Bool {

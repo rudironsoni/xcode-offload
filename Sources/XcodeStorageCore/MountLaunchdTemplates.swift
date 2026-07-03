@@ -54,7 +54,7 @@ public struct MountLaunchdTemplates {
         set -euo pipefail
 
         root=\(config.root.shellQuoted)
-        backup_root=\(config.mountBackupRoot.shellQuoted)
+        backup_root=\(config.mountSystemBackupRoot.shellQuoted)
         ids=(\(ids))
         images=(\(images))
         mountpoints=(\(mountpoints))
@@ -132,6 +132,29 @@ public struct MountLaunchdTemplates {
           fi
         }
 
+        nested_mounts_under() {
+          local mountpoint="$1"
+          /sbin/mount | /usr/bin/awk -v mountpoint="$mountpoint" '
+            function mounted_path(line) {
+              sub(/^.* on /, "", line)
+              sub(/ \\(.*$/, "", line)
+              return line
+            }
+            function normalized(value) {
+              if (value == "/private" mountpoint) {
+                return mountpoint
+              }
+              return value
+            }
+            {
+              path = normalized(mounted_path($0))
+              if (index(path, mountpoint "/") == 1) {
+                print path
+              }
+            }
+          '
+        }
+
         prepare_mountpoint() {
           local id="$1"
           local mountpoint="$2"
@@ -175,6 +198,7 @@ public struct MountLaunchdTemplates {
           exit 0
         fi
 
+        mounted_any=0
         for index in {1..${#ids[@]}}; do
           id="${ids[$index]}"
           image="${images[$index]}"
@@ -189,12 +213,21 @@ public struct MountLaunchdTemplates {
             fi
             fail "mountpoint is already mounted from a different backend: $mountpoint"
           fi
+          nested_mounts="$(nested_mounts_under "$mountpoint")"
+          if [[ -n "$nested_mounts" ]]; then
+            fail "mountpoint contains active nested mounts: $nested_mounts. Shut down simulators and detach those mounts before mounting $mountpoint."
+          fi
           if [[ "$preparation" == "coreSimulatorImages" ]]; then
             prepare_images_sparsebundle "$image"
           fi
           prepare_mountpoint "$id" "$mountpoint" "$mode"
           /usr/bin/hdiutil attach "$image" -mountpoint "$mountpoint" -nobrowse -owners on
+          mounted_any=1
         done
+
+        if [[ "$mounted_any" == "1" ]]; then
+          /usr/bin/xcrun simctl runtime scan-and-mount >/dev/null 2>&1 || true
+        fi
         """
     }
 

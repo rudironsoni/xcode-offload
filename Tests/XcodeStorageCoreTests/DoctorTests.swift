@@ -108,6 +108,46 @@ import Testing
     #expect(report.checks.contains(DoctorCheck(.fail, "simctl devices responds", detail: "simctl unavailable")))
 }
 
+@Test func doctorFailsWhenSimctlRuntimeListIsEmpty() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createDoctorFixture(config: config)
+
+    let runner = DoctorRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            /dev/disk7s1 on \(config.deviceMount) (apfs, local)
+            /dev/disk11s1 on \(config.cacheMount) (apfs, local)
+            """,
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            image-path      : \(config.deviceStoreImage)
+            image-path      : \(config.cacheImage)
+            """,
+            stderr: ""
+        ),
+        "/usr/bin/xcrun": ProcessResult(
+            exitCode: 0,
+            stdout: "== Runtimes ==\n",
+            stderr: ""
+        )
+    ])
+
+    let report = Doctor(runner: runner).run(
+        config: config,
+        requireShims: false,
+        validateSimctl: true
+    )
+
+    #expect(!report.passed)
+    #expect(report.checks.contains(DoctorCheck(.fail, "simctl runtimes has available runtimes", detail: "== Runtimes ==")))
+}
+
 private struct DoctorRunner: CommandRunning {
     let results: [String: ProcessResult]
 
@@ -142,4 +182,3 @@ private func temporaryDirectory() throws -> String {
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url.path
 }
-

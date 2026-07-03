@@ -30,6 +30,7 @@ import Testing
     #expect(actions.contains { $0.contains("hdiutil create") && $0.contains("DerivedData.sparsebundle") && $0.contains("-type SPARSEBUNDLE") })
     #expect(actions.contains { $0.contains("chmod 1777") && $0.contains("/mnt") })
     #expect(actions.contains { $0.contains("hdiutil attach") && $0.contains("/Library/Developer/CoreSimulator/Images") })
+    #expect(actions.contains { $0.contains("xcrun") && $0.contains("simctl") && $0.contains("scan-and-mount") })
     #expect(actions.contains { $0 == "write \(config.mountUserLaunchAgentPath)" })
     #expect(actions.contains { $0 == "write \(config.mountSystemLaunchDaemonPath)" })
     #expect(!actions.contains { $0.localizedCaseInsensitiveContains("ln -s") })
@@ -101,6 +102,11 @@ import Testing
     try assertPlistLintPasses(templates.systemDaemonPlist)
     #expect(templates.userAgentPlist.contains("<string>mounts</string>"))
     #expect(templates.systemHelper.contains("reject_symlink"))
+    #expect(templates.systemHelper.contains("nested_mounts_under"))
+    #expect(templates.systemHelper.contains("mountpoint contains active nested mounts"))
+    #expect(templates.systemHelper.contains(config.mountSystemBackupRoot))
+    #expect(!templates.systemHelper.contains(config.mountUserBackupRoot))
+    #expect(templates.systemHelper.contains("simctl runtime scan-and-mount"))
     try assertZshSyntaxPasses(templates.systemHelper)
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Images"))
     #expect(templates.systemHelper.contains("/Library/Developer/CoreSimulator/Volumes"))
@@ -152,6 +158,30 @@ import Testing
     #expect(!actions.contains { $0.contains("/tmp/xcode-storage-images-") && $0.contains("hdiutil attach") })
 }
 
+@Test func userMountInstallUsesUserBackupRootForExistingData() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+    try "marker".write(
+        toFile: "\(config.deviceMount)/existing-file",
+        atomically: true,
+        encoding: .utf8
+    )
+
+    let actions = try MountActions(runner: MountStubRunner(results: [:])).install(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-storage",
+        scope: .user,
+        load: false,
+        dryRun: true
+    )
+
+    #expect(actions.contains { $0.contains("mv \(config.deviceMount)") && $0.contains(config.mountUserBackupRoot) })
+    #expect(!actions.contains { $0.contains("mv \(config.deviceMount)") && $0.contains(config.mountSystemBackupRoot) })
+    #expect(!actions.contains { $0.contains("mv \(config.deviceMount)") && $0.contains(config.mountBackupRoot) })
+}
+
 @Test func mountInstallRejectsAlreadyMountedWrongBackend() throws {
     let root = try temporaryDirectory()
     let home = try temporaryDirectory()
@@ -179,6 +209,38 @@ import Testing
             load: false,
             dryRun: true
         )
+    }
+}
+
+@Test func mountInstallRejectsNestedRuntimeMountBeforeMovingVolumesParent() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+    let runtimeMount = "\(config.mountVolumesMount)/iOS_23F77"
+    let runner = MountStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: "/dev/disk7s1 on \(runtimeMount) (apfs, sealed, local, nodev, nosuid, read-only, journaled, noatime, nobrowse)",
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(exitCode: 0, stdout: "", stderr: "")
+    ])
+
+    do {
+        _ = try MountActions(runner: runner).install(
+            config: config,
+            toolPath: "/opt/homebrew/bin/xcode-storage",
+            scope: .system,
+            load: false,
+            dryRun: true
+        )
+        Issue.record("expected nested runtime mount to be rejected")
+    } catch let error as CommandError {
+        #expect(error.exitCode == 78)
+        #expect(error.message.contains("mountpoint contains active nested mounts"))
+        #expect(error.message.contains(runtimeMount))
+        #expect(error.message.contains("Shut down simulators"))
     }
 }
 

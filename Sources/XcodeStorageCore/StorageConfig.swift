@@ -94,6 +94,14 @@ public struct StorageConfig: Codable, Equatable, Sendable {
         "\(xcodeRoot)/Backups/mounts"
     }
 
+    public var mountUserBackupRoot: String {
+        "\(xcodeRoot)/UserBackups/mounts"
+    }
+
+    public var mountSystemBackupRoot: String {
+        "\(xcodeRoot)/SystemBackups/mounts"
+    }
+
     public var mountImagesImage: String {
         "\(xcodeRoot)/CoreSimulator/Images.sparsebundle"
     }
