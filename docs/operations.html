@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>xcode-storage operations</title>
-    <meta name="description" content="Common operating flows for xcode-storage.">
+    <title>xcode-offload operations</title>
+    <meta name="description" content="Common operating flows for xcode-offload.">
     <link rel="stylesheet" href="assets/styles.css">
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
         <a class="brand" href="index.html">
-          <strong>xcode-storage</strong>
+          <strong>xcode-offload</strong>
           <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
@@ -20,7 +20,7 @@
           <a href="commands.html">Commands</a>
           <a href="operations.html">Operations</a>
           <a href="troubleshooting.html">Troubleshooting</a>
-          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+          <a href="https://github.com/rudironsoni/xcode-offload">GitHub</a>
         </nav>
       </div>
     </header>
@@ -49,27 +49,27 @@
         <h2>Install on a new machine</h2>
         <ol>
           <li>Mount the external volume.</li>
-          <li>Set <code>XCODE_STORAGE_ROOT</code> to a path on that volume.</li>
+          <li>Set <code>XCODE_OFFLOAD_ROOT</code> to a path on that volume.</li>
           <li>Run <code>repair --dry-run</code> and read the plan.</li>
           <li>Run user repair with <code>--load</code>.</li>
           <li>Install the system daemon with sudo.</li>
           <li>Run <code>doctor --strict</code>.</li>
         </ol>
-        <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
-xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --dry-run
-xcode-storage repair --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --install-shims --load
-sudo xcode-storage daemon install --root "$XCODE_STORAGE_ROOT" --home "$HOME"
-xcode-storage doctor --root "$XCODE_STORAGE_ROOT" --require-shims --strict</code></pre>
+        <pre><code>export XCODE_OFFLOAD_ROOT="/Volumes/YourExternalVolume"
+xcode-offload repair --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --install-shims --dry-run
+xcode-offload repair --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --install-shims --load
+sudo xcode-offload daemon install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME"
+xcode-offload doctor --root "$XCODE_OFFLOAD_ROOT" --require-shims --strict</code></pre>
 
         <h2>Enable APFS mount mode</h2>
-        <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --dry-run
-xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
-sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
-xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all</code></pre>
+        <pre><code>xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --dry-run
+xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
+sudo xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load
+xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all</code></pre>
 
         <h2>Verify in a scratch root</h2>
-        <pre><code>xcode-storage mounts verify \
-  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
+        <pre><code>xcode-offload mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-offload-verify" \
   --mode user</code></pre>
         <p>
           The command creates disposable sparsebundles, mounts them, checks status, unmounts them, and removes the scratch run directory.
@@ -83,16 +83,16 @@ PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version</code></pre>
         </p>
 
         <h2>Back out user mount mode</h2>
-        <pre><code>xcode-storage mounts uninstall --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --unload</code></pre>
+        <pre><code>xcode-offload mounts uninstall --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --unload</code></pre>
 
         <h2>Back out system mount mode</h2>
-        <pre><code>sudo xcode-storage mounts uninstall --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --unload</code></pre>
+        <pre><code>sudo xcode-offload mounts uninstall --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --unload</code></pre>
       </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-inner">
-        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+        Docs for <code>xcode-offload</code>. Source: github.com/rudironsoni/xcode-offload.
       </div>
     </footer>
   </body>

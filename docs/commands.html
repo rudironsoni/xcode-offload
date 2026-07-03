@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>xcode-storage command reference</title>
-    <meta name="description" content="Command reference for installed xcode-storage users.">
+    <title>xcode-offload command reference</title>
+    <meta name="description" content="Command reference for installed xcode-offload users.">
     <link rel="stylesheet" href="assets/styles.css">
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
         <a class="brand" href="index.html">
-          <strong>xcode-storage</strong>
+          <strong>xcode-offload</strong>
           <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
@@ -20,7 +20,7 @@
           <a href="commands.html">Commands</a>
           <a href="operations.html">Operations</a>
           <a href="troubleshooting.html">Troubleshooting</a>
-          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+          <a href="https://github.com/rudironsoni/xcode-offload">GitHub</a>
         </nav>
       </div>
     </header>
@@ -47,65 +47,65 @@
         </div>
 
         <h2>Health checks</h2>
-        <pre><code>xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]</code></pre>
+        <pre><code>xcode-offload doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]</code></pre>
         <p>
           <code>doctor</code> checks directories, sparsebundles, mounts, launchd jobs, and optional shims. <code>--strict</code> also checks APFS state, backend provenance, plist validity, and launchd exit status.
         </p>
 
         <h2>Repair</h2>
-        <pre><code>xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]</code></pre>
+        <pre><code>xcode-offload repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]</code></pre>
         <p>
           <code>repair</code> creates the storage root if needed, mounts the device and cache stores, installs launchd jobs, and can install shims.
         </p>
 
         <h2>Initialize storage</h2>
-        <pre><code>xcode-storage init [--root PATH] [--dry-run] [--no-create-images]</code></pre>
+        <pre><code>xcode-offload init [--root PATH] [--dry-run] [--no-create-images]</code></pre>
         <p>
           <code>init</code> creates the directory layout and sparsebundles. Use <code>--no-create-images</code> when you only want the directory layout.
         </p>
 
         <h2>Mount legacy stores</h2>
-        <pre><code>xcode-storage mount devices|caches [--root PATH] [--dry-run]
-xcode-storage unmount devices|caches [--root PATH] [--dry-run]</code></pre>
+        <pre><code>xcode-offload mount devices|caches [--root PATH] [--dry-run]
+xcode-offload unmount devices|caches [--root PATH] [--dry-run]</code></pre>
         <p>
           These commands manage the device and cache sparsebundles used by the repair flow.
         </p>
 
         <h2>Install shims</h2>
-        <pre><code>xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]</code></pre>
+        <pre><code>xcode-offload install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]</code></pre>
         <p>
           Shims wrap <code>xcrun</code>, <code>simctl</code>, and <code>xcodebuild</code> for explicit flag routing. They are optional when APFS mount mode is active.
         </p>
 
         <h2>Launchd</h2>
-        <pre><code>xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]</code></pre>
+        <pre><code>xcode-offload daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+xcode-offload launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+xcode-offload install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-offload uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]</code></pre>
         <p>
           <code>daemon install</code> and <code>launchd install</code> are the normal names for the system helper install. <code>install-launchd</code> and <code>uninstall-launchd</code> remain available for lower-level launchd work.
         </p>
 
         <h2>APFS mount manager</h2>
-        <pre><code>xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]</code></pre>
+        <pre><code>xcode-offload mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-offload mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]</code></pre>
 
         <h2>xcodes compatibility</h2>
-        <pre><code>xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
-xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
-xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]</code></pre>
+        <pre><code>xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+xcode-offload xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]</code></pre>
         <p>
           <code>xcodes install-profile</code> prepares APFS-backed Apple paths for xcodes and standard Xcode tools. It does not require command shims.
         </p>
 
         <h2>Simulator helpers</h2>
-        <pre><code>xcode-storage sim runtimes
-xcode-storage sim devices [--all]
-xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
-xcode-storage sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]</code></pre>
+        <pre><code>xcode-offload sim runtimes
+xcode-offload sim devices [--all]
+xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+xcode-offload sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]</code></pre>
         <p>
           <code>sim recreate</code> deletes an existing simulator with the same name, creates a fresh one, and can boot it. First boot can be slow on recent iOS runtimes, so the boot timeout is intentionally long.
           <code>sim open</code> is idempotent: a simulator that is already booted is treated as ready, then Simulator is opened for that device.
@@ -115,7 +115,7 @@ xcode-storage sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]</cod
 
     <footer class="site-footer">
       <div class="footer-inner">
-        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+        Docs for <code>xcode-offload</code>. Source: github.com/rudironsoni/xcode-offload.
       </div>
     </footer>
   </body>

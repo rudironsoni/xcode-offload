@@ -52,8 +52,8 @@ jobs:
       - name: Build release artifact
         id: build
         env:
-          XCODE_STORAGE_RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
-          XCODE_STORAGE_KEEP_GENERATED_VERSION: "1"
+          XCODE_OFFLOAD_RELEASE_TAG: ${{ steps.changelog.outputs.tag }}
+          XCODE_OFFLOAD_KEEP_GENERATED_VERSION: "1"
         run: |
           archive="$(make --no-print-directory build-release)"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"

@@ -3,25 +3,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "xcode-storage",
+    name: "xcode-offload",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "xcode-storage", targets: ["XcodeStorageCLI"]),
-        .library(name: "XcodeStorageCore", targets: ["XcodeStorageCore"])
+        .executable(name: "xcode-offload", targets: ["XcodeOffloadCLI"]),
+        .library(name: "XcodeOffloadCore", targets: ["XcodeOffloadCore"])
     ],
     targets: [
         .executableTarget(
-            name: "XcodeStorageCLI",
-            dependencies: ["XcodeStorageCore"]
+            name: "XcodeOffloadCLI",
+            dependencies: ["XcodeOffloadCore"]
         ),
         .target(
-            name: "XcodeStorageCore"
+            name: "XcodeOffloadCore"
         ),
         .testTarget(
-            name: "XcodeStorageCoreTests",
-            dependencies: ["XcodeStorageCore"]
+            name: "XcodeOffloadCoreTests",
+            dependencies: ["XcodeOffloadCore"]
         )
     ],
     swiftLanguageModes: [.v6]

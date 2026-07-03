@@ -1,5 +1,5 @@
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func queryOnlyXcodebuildArgumentsAreNotRewritten() {
     let config = StorageConfig(root: "/Volumes/ExternalXcode")

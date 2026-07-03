@@ -293,7 +293,7 @@ public struct StorageActions {
         let isNonEmpty = !contents.isEmpty
 
         if isNonEmpty {
-            let backup = "/var/tmp/io.github.rudironsoni.xcode-storage.caches-backups/\(timestamp())/Caches"
+            let backup = "/var/tmp/io.github.rudironsoni.xcode-offload.caches-backups/\(timestamp())/Caches"
             actions.append("mv \(config.cacheMount.shellQuoted) \(backup.shellQuoted)")
             actions.append("mkdir -p \(config.cacheMount.shellQuoted)")
             if !dryRun {
@@ -340,7 +340,7 @@ public struct StorageActions {
 
     private func validatePlist(_ plist: String, name: String) throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xcode-storage-\(UUID().uuidString).plist")
+            .appendingPathComponent("xcode-offload-\(UUID().uuidString).plist")
         try plist.write(to: url, atomically: true, encoding: .utf8)
         defer {
             try? fileManager.removeItem(at: url)

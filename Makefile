@@ -1,9 +1,9 @@
 SHELL := /bin/sh
 
-PRODUCT := xcode-storage
+PRODUCT := xcode-offload
 CONFIGURATION := release
 ARTIFACT_DIR := .build/artifacts
-METADATA := Sources/XcodeStorageCore/Generated/GeneratedBuildMetadata.swift
+METADATA := Sources/XcodeOffloadCore/Generated/GeneratedBuildMetadata.swift
 DEFAULT_RELEASE_TEST_TAG := v9.8.7-test.1
 
 .PHONY: all build test ci generate-version-source check-makefile check-docs check-no-machine-defaults smoke-version smoke-cli build-release check-release-artifact
@@ -25,7 +25,7 @@ generate-version-source:
 	@set -eu; \
 	output="$${OUTPUT:-$(METADATA)}"; \
 	mkdir -p "$$(dirname "$$output")"; \
-	tag="$${XCODE_STORAGE_RELEASE_TAG:-$${GITHUB_REF_NAME:-}}"; \
+	tag="$${XCODE_OFFLOAD_RELEASE_TAG:-$${GITHUB_REF_NAME:-}}"; \
 	if [ -z "$$tag" ]; then \
 	  tag="$$(git describe --tags --exact-match 2>/dev/null || true)"; \
 	fi; \
@@ -68,7 +68,7 @@ check-docs:
 	done; \
 	em_dash=$$(printf '\342\200\224'); \
 	en_dash=$$(printf '\342\200\223'); \
-	if git grep -nE '\\.build/debug|swift build|git clone|Build from source|native|Native|certify|Certify|certification|Certification|XCODE_STORAGE_CERT|--cert-root' -- README.md docs; then \
+	if git grep -nE '\\.build/debug|swift build|git clone|Build from source|native|Native|certify|Certify|certification|Certification|XCODE_OFFLOAD_CERT|--cert-root' -- README.md docs; then \
 	  echo "docs contain build artifact paths, source-build setup, stale command names, or disallowed dash characters" >&2; \
 	  exit 1; \
 	fi; \
@@ -86,11 +86,11 @@ check-docs:
 	  grep -F '<main class="layout">' "$$page" >/dev/null; \
 	  grep -F '<meta name="viewport"' "$$page" >/dev/null; \
 	  grep -F 'assets/styles.css' "$$page" >/dev/null; \
-	  grep -F 'Docs for <code>xcode-storage</code>' "$$page" >/dev/null; \
+	  grep -F 'Docs for <code>xcode-offload</code>' "$$page" >/dev/null; \
 	done; \
-	grep -F 'https://rudironsoni.github.io/xcode-storage/' README.md >/dev/null; \
-	grep -F 'xcode-storage mounts verify' docs/commands.html >/dev/null; \
-	grep -F 'The examples below assume the installed command is available as <code>xcode-storage</code>' docs/install.html >/dev/null
+	grep -F 'https://rudironsoni.github.io/xcode-offload/' README.md >/dev/null; \
+	grep -F 'xcode-offload mounts verify' docs/commands.html >/dev/null; \
+	grep -F 'The examples below assume the installed command is available as <code>xcode-offload</code>' docs/install.html >/dev/null
 
 check-no-machine-defaults:
 	@set -eu; \
@@ -105,13 +105,13 @@ smoke-version:
 
 smoke-cli:
 	@set -eu; \
-	bin="$${XCODE_STORAGE_BIN:-.build/debug/$(PRODUCT)}"; \
+	bin="$${XCODE_OFFLOAD_BIN:-.build/debug/$(PRODUCT)}"; \
 	if [ ! -x "$$bin" ]; then \
 	  swift build >/dev/null; \
 	fi; \
 	tmp_parent="$${TMPDIR:-/tmp}"; \
 	tmp_parent="$${tmp_parent%/}"; \
-	tmp="$$tmp_parent/xcode-storage-cli-smoke.$$"; \
+	tmp="$$tmp_parent/xcode-offload-cli-smoke.$$"; \
 	rm -rf "$$tmp"; \
 	mkdir -p "$$tmp"; \
 	trap 'rm -rf "$$tmp"' EXIT INT TERM; \
@@ -131,8 +131,8 @@ smoke-cli:
 	    exit 1; \
 	  fi; \
 	}; \
-	"$$bin" help | grep -F "xcode-storage manages external Xcode" >/dev/null; \
-	"$$bin" version | grep -E '^xcode-storage |^[0-9]+\.[0-9]+\.[0-9]+' >/dev/null; \
+	"$$bin" help | grep -F "xcode-offload manages external Xcode" >/dev/null; \
+	"$$bin" version | grep -E '^xcode-offload |^[0-9]+\.[0-9]+\.[0-9]+' >/dev/null; \
 	expect_failure "$$bin" definitely-not-a-command; \
 	grep -F "unknown command: definitely-not-a-command" "$$tmp/stderr" >/dev/null; \
 	expect_failure "$$bin" sim recreate --name SmokeOnly --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-17; \
@@ -142,9 +142,9 @@ smoke-cli:
 	output="$$("$$bin" init --root "$$tmp/External Disk" --dry-run --no-create-images)"; \
 	require_output "init dry-run" "mkdir -p '$$tmp/External Disk/Xcode'" "$$output"; \
 	output="$$("$$bin" daemon install --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run)"; \
-	require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$$output"; \
+	require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist" "$$output"; \
 	output="$$("$$bin" launchd install --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run)"; \
-	require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist" "$$output"; \
+	require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist" "$$output"; \
 	output="$$("$$bin" mounts install --root "$$tmp/External Disk" --home "$$tmp/Home" --scope user --dry-run)"; \
 	require_output "mounts user install dry-run" "DerivedData.sparsebundle" "$$output"; \
 	require_output "mounts user install dry-run" "$$tmp/Home/Library/Developer/Xcode/DerivedData" "$$output"; \
@@ -181,12 +181,12 @@ build-release:
 	    rm -f "$$metadata_backup"; \
 	  fi; \
 	}; \
-	if [ "$${XCODE_STORAGE_KEEP_GENERATED_VERSION:-0}" != "1" ] && [ -f "$$metadata" ]; then \
+	if [ "$${XCODE_OFFLOAD_KEEP_GENERATED_VERSION:-0}" != "1" ] && [ -f "$$metadata" ]; then \
 	  metadata_backup="$$(mktemp)"; \
 	  cp "$$metadata" "$$metadata_backup"; \
 	  trap cleanup EXIT INT TERM; \
 	fi; \
-	version="$$(XCODE_STORAGE_RELEASE_TAG="$${XCODE_STORAGE_RELEASE_TAG:-$(TAG)}" $(MAKE) --no-print-directory generate-version-source OUTPUT="$$metadata")"; \
+	version="$$(XCODE_OFFLOAD_RELEASE_TAG="$${XCODE_OFFLOAD_RELEASE_TAG:-$(TAG)}" $(MAKE) --no-print-directory generate-version-source OUTPUT="$$metadata")"; \
 	swift build -c "$(CONFIGURATION)" --product "$(PRODUCT)" >&2; \
 	mkdir -p "$(ARTIFACT_DIR)"; \
 	binary=".build/$(CONFIGURATION)/$(PRODUCT)"; \
@@ -206,7 +206,7 @@ check-release-artifact:
 	  tag="$(DEFAULT_RELEASE_TEST_TAG)"; \
 	fi; \
 	version="$${tag#v}"; \
-	archive="$$(XCODE_STORAGE_RELEASE_TAG="$$tag" $(MAKE) --no-print-directory build-release)"; \
+	archive="$$(XCODE_OFFLOAD_RELEASE_TAG="$$tag" $(MAKE) --no-print-directory build-release)"; \
 	archive_name="$$(basename "$$archive")"; \
 	checksum="$$archive.sha256"; \
 	expected="$(PRODUCT)-$$version-macos-arm64.tar.gz"; \
@@ -214,7 +214,7 @@ check-release-artifact:
 	  echo "unexpected archive name: $$archive_name, expected $$expected" >&2; \
 	  exit 1; \
 	fi; \
-	tmp="$${TMPDIR:-/tmp}/xcode-storage-release-smoke.$$"; \
+	tmp="$${TMPDIR:-/tmp}/xcode-offload-release-smoke.$$"; \
 	rm -rf "$$tmp"; \
 	mkdir -p "$$tmp"; \
 	trap 'rm -rf "$$tmp"' EXIT INT TERM; \

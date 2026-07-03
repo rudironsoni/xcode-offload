@@ -1,5 +1,5 @@
 import Foundation
-import XcodeStorageCore
+import XcodeOffloadCore
 
 @main
 enum Main {
@@ -61,7 +61,7 @@ struct CLI {
         case "wrap-xcodebuild":
             try wrapper(arguments: arguments.remaining, kind: .xcodebuild)
         default:
-            throw CommandError("unknown command: \(command)\n\nRun xcode-storage help.", exitCode: 64)
+            throw CommandError("unknown command: \(command)\n\nRun xcode-offload help.", exitCode: 64)
         }
     }
 
@@ -295,9 +295,9 @@ struct CLI {
                 print(check.humanLine)
             }
             if report.passed {
-                print("OK xcode-storage mounts status passed")
+                print("OK xcode-offload mounts status passed")
             } else {
-                FileHandle.standardError.write(Data("FAIL xcode-storage mounts status found \(report.failureCount) issue(s)\n".utf8))
+                FileHandle.standardError.write(Data("FAIL xcode-offload mounts status found \(report.failureCount) issue(s)\n".utf8))
             }
         }
 
@@ -314,21 +314,21 @@ struct CLI {
 
         let environment = ProcessInfo.processInfo.environment
         let scratchRoot = arguments.popOption("--scratch-root")
-            ?? environment["XCODE_STORAGE_VERIFY_ROOT"]
+            ?? environment["XCODE_OFFLOAD_VERIFY_ROOT"]
         guard let scratchRoot, !scratchRoot.isEmpty else {
-            throw CommandError("missing scratch root. Pass --scratch-root PATH or set XCODE_STORAGE_VERIFY_ROOT.", exitCode: 64)
+            throw CommandError("missing scratch root. Pass --scratch-root PATH or set XCODE_OFFLOAD_VERIFY_ROOT.", exitCode: 64)
         }
 
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
-        let home = arguments.popOption("--home") ?? environment["XCODE_STORAGE_VERIFY_HOME"] ?? verificationHome(environment: environment)
-        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_STORAGE_VERIFY_RUNTIME"]
-        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_STORAGE_VERIFY_DEVICE_TYPE"]
+        let home = arguments.popOption("--home") ?? environment["XCODE_OFFLOAD_VERIFY_HOME"] ?? verificationHome(environment: environment)
+        let runtime = arguments.popOption("--runtime") ?? environment["XCODE_OFFLOAD_VERIFY_RUNTIME"]
+        let deviceType = arguments.popOption("--device-type") ?? environment["XCODE_OFFLOAD_VERIFY_DEVICE_TYPE"]
         let keepArtifacts = arguments.popFlag("--keep-artifacts")
-            || environmentFlag(environment["XCODE_STORAGE_VERIFY_KEEP_ARTIFACTS"])
+            || environmentFlag(environment["XCODE_OFFLOAD_VERIFY_KEEP_ARTIFACTS"])
         let allowSystem = arguments.popFlag("--allow-system")
-            || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SYSTEM"])
+            || environmentFlag(environment["XCODE_OFFLOAD_VERIFY_ALLOW_SYSTEM"])
         let allowSimDelete = arguments.popFlag("--allow-sim-delete")
-            || environmentFlag(environment["XCODE_STORAGE_VERIFY_ALLOW_SIM_DELETE"])
+            || environmentFlag(environment["XCODE_OFFLOAD_VERIFY_ALLOW_SIM_DELETE"])
         let bootTimeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
         try arguments.rejectUnknown()
 
@@ -406,9 +406,9 @@ struct CLI {
             }
 
             if report.passed {
-                print("OK xcode-storage xcodes doctor passed")
+                print("OK xcode-offload xcodes doctor passed")
             } else {
-                FileHandle.standardError.write(Data("FAIL xcode-storage xcodes doctor found \(report.failureCount) issue(s)\n".utf8))
+                FileHandle.standardError.write(Data("FAIL xcode-offload xcodes doctor found \(report.failureCount) issue(s)\n".utf8))
             }
         }
 
@@ -580,31 +580,31 @@ struct CLI {
     private func printHelp() {
         print(
             """
-            xcode-storage manages external Xcode and CoreSimulator storage.
+            xcode-offload manages external Xcode and CoreSimulator storage.
 
             Usage:
-              xcode-storage doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
-              xcode-storage repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
-              xcode-storage init [--root PATH] [--dry-run] [--no-create-images]
-              xcode-storage mount devices|caches [--root PATH] [--dry-run]
-              xcode-storage unmount devices|caches [--root PATH] [--dry-run]
-              xcode-storage install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
-              xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-              xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-              xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
-              xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
-              xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
-              xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
-              xcode-storage install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-storage sim runtimes
-              xcode-storage sim devices [--all]
-              xcode-storage sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
-              xcode-storage sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]
+              xcode-offload doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
+              xcode-offload repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
+              xcode-offload init [--root PATH] [--dry-run] [--no-create-images]
+              xcode-offload mount devices|caches [--root PATH] [--dry-run]
+              xcode-offload unmount devices|caches [--root PATH] [--dry-run]
+              xcode-offload install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
+              xcode-offload daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-offload mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-offload xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
+              xcode-offload install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-offload uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-offload sim runtimes
+              xcode-offload sim devices [--all]
+              xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+              xcode-offload sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]
             """
         )
     }
@@ -612,10 +612,10 @@ struct CLI {
     private func printDaemonHelp() {
         print(
             """
-            xcode-storage daemon manages the root LaunchDaemon for CoreSimulator caches.
+            xcode-offload daemon manages the root LaunchDaemon for CoreSimulator caches.
 
             Usage:
-              xcode-storage daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
             """
         )
     }
@@ -623,10 +623,10 @@ struct CLI {
     private func printLaunchdHelp() {
         print(
             """
-            xcode-storage launchd manages launchd jobs for CoreSimulator storage.
+            xcode-offload launchd manages launchd jobs for CoreSimulator storage.
 
             Usage:
-              xcode-storage launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
             """
         )
     }
@@ -634,14 +634,14 @@ struct CLI {
     private func printMountsHelp() {
         print(
             """
-            xcode-storage mounts manages APFS sparsebundle mountpoints at Apple paths.
+            xcode-offload mounts manages APFS sparsebundle mountpoints at Apple paths.
 
             Usage:
-              xcode-storage mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-storage mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-storage mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-storage mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-offload mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-offload mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
+              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
+              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
             This mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
             """
@@ -651,12 +651,12 @@ struct CLI {
     private func printXcodesHelp() {
         print(
             """
-            xcode-storage xcodes configures transparent storage for xcodes and Apple tools.
+            xcode-offload xcodes configures transparent storage for xcodes and Apple tools.
 
             Usage:
-              xcode-storage xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
-              xcode-storage xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
-              xcode-storage xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
+              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-offload xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
+              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
 
             The profile mounts APFS sparsebundles at Apple paths and sets XCODES_DIRECTORY.
             It does not install xcrun, simctl, or xcodebuild shims.

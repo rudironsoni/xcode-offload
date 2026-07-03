@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func managedMountInventoryUsesApplePathsAndExternalSparsebundles() {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
@@ -21,7 +21,7 @@ import Testing
     let config = StorageConfig(root: root, home: home)
     let actions = try MountActions(runner: MountStubRunner(results: [:])).install(
         config: config,
-        toolPath: "/opt/homebrew/bin/xcode-storage",
+        toolPath: "/opt/homebrew/bin/xcode-offload",
         scope: .all,
         load: true,
         dryRun: true
@@ -52,7 +52,7 @@ import Testing
     #expect(throws: CommandError.self) {
         _ = try MountActions(runner: MountStubRunner(results: [:])).install(
             config: config,
-            toolPath: "/opt/homebrew/bin/xcode-storage",
+            toolPath: "/opt/homebrew/bin/xcode-offload",
             scope: .user,
             load: false,
             dryRun: true
@@ -97,7 +97,7 @@ import Testing
 
 @Test func mountLaunchdPlistsPassPlutilLintAndHelpersAvoidSymlinks() throws {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
-    let templates = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage")
+    let templates = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-offload")
 
     try assertPlistLintPasses(templates.userAgentPlist)
     try assertPlistLintPasses(templates.systemDaemonPlist)
@@ -117,7 +117,7 @@ import Testing
 
 @Test func mountSystemHelperKeepsRecordPathsWithSpacesParseable() {
     let config = StorageConfig(root: "/Volumes/External Xcode", home: "/Users/rudi")
-    let helper = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-storage").systemHelper
+    let helper = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-offload").systemHelper
 
     #expect(helper.contains("images=('/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle'"))
     #expect(helper.contains("mountpoints=(/Library/Developer/CoreSimulator/Caches"))
@@ -150,14 +150,14 @@ import Testing
 
     let actions = try MountActions(runner: runner).repair(
         config: config,
-        toolPath: "/opt/homebrew/bin/xcode-storage",
+        toolPath: "/opt/homebrew/bin/xcode-offload",
         scope: .system,
         load: false,
         dryRun: true
     )
 
     #expect(actions.contains("already prepared /Library/Developer/CoreSimulator/Images"))
-    #expect(!actions.contains { $0.contains("/tmp/xcode-storage-images-") && $0.contains("hdiutil attach") })
+    #expect(!actions.contains { $0.contains("/tmp/xcode-offload-images-") && $0.contains("hdiutil attach") })
 }
 
 @Test func userMountInstallUsesUserBackupRootForExistingData() throws {
@@ -173,7 +173,7 @@ import Testing
 
     let actions = try MountActions(runner: MountStubRunner(results: [:])).install(
         config: config,
-        toolPath: "/opt/homebrew/bin/xcode-storage",
+        toolPath: "/opt/homebrew/bin/xcode-offload",
         scope: .user,
         load: false,
         dryRun: true
@@ -206,7 +206,7 @@ import Testing
     #expect(throws: CommandError.self) {
         _ = try MountActions(runner: runner).install(
             config: config,
-            toolPath: "/opt/homebrew/bin/xcode-storage",
+            toolPath: "/opt/homebrew/bin/xcode-offload",
             scope: .user,
             load: false,
             dryRun: true
@@ -232,7 +232,7 @@ import Testing
     do {
         _ = try MountActions(runner: runner).install(
             config: config,
-            toolPath: "/opt/homebrew/bin/xcode-storage",
+            toolPath: "/opt/homebrew/bin/xcode-offload",
             scope: .system,
             load: false,
             dryRun: true
@@ -322,14 +322,14 @@ private func mountHdiutilOutput(config: StorageConfig, only ids: Set<String>? = 
 
 private func temporaryDirectory() throws -> String {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("xcode-offload-mounts-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url.path
 }
 
 private func assertPlistLintPasses(_ plist: String) throws {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString).plist")
+        .appendingPathComponent("xcode-offload-mounts-test-\(UUID().uuidString).plist")
     try plist.write(to: url, atomically: true, encoding: .utf8)
     defer {
         try? FileManager.default.removeItem(at: url)
@@ -346,7 +346,7 @@ private func assertPlistLintPasses(_ plist: String) throws {
 
 private func assertZshSyntaxPasses(_ script: String) throws {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-mounts-test-\(UUID().uuidString).zsh")
+        .appendingPathComponent("xcode-offload-mounts-test-\(UUID().uuidString).zsh")
     try script.write(to: url, atomically: true, encoding: .utf8)
     defer {
         try? FileManager.default.removeItem(at: url)

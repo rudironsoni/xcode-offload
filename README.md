@@ -1,6 +1,6 @@
-# xcode-storage
+# xcode-offload
 
-`xcode-storage` moves Xcode and CoreSimulator data to external storage without
+`xcode-offload` moves Xcode and CoreSimulator data to external storage without
 changing the paths Apple tools expect.
 
 It is for Macs where Xcode, simulators, DerivedData, archives, and
@@ -8,7 +8,7 @@ CoreSimulator caches are eating the internal disk. The tool mounts APFS
 sparsebundles at the normal Apple paths. It does not use symlinks for those
 paths.
 
-Docs: https://rudironsoni.github.io/xcode-storage/
+Docs: https://rudironsoni.github.io/xcode-offload/
 
 ## What it manages
 
@@ -24,24 +24,24 @@ Docs: https://rudironsoni.github.io/xcode-storage/
 The storage root is your choice:
 
 ```sh
-export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
+export XCODE_OFFLOAD_ROOT="/Volumes/YourExternalVolume"
 ```
 
-`xcode-storage` never guesses a machine-specific volume.
+`xcode-offload` never guesses a machine-specific volume.
 
 ## Quick start
 
-Install `xcode-storage`, then set the external storage root:
+Install `xcode-offload`, then set the external storage root:
 
 ```sh
-export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"
+export XCODE_OFFLOAD_ROOT="/Volumes/YourExternalVolume"
 ```
 
 Preview the user-level plan:
 
 ```sh
-xcode-storage repair \
-  --root "$XCODE_STORAGE_ROOT" \
+xcode-offload repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME" \
   --scope user \
   --install-shims \
@@ -51,8 +51,8 @@ xcode-storage repair \
 Install the user LaunchAgent and shims:
 
 ```sh
-xcode-storage repair \
-  --root "$XCODE_STORAGE_ROOT" \
+xcode-offload repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME" \
   --scope user \
   --install-shims \
@@ -62,16 +62,16 @@ xcode-storage repair \
 Install the root-owned CoreSimulator cache helper:
 
 ```sh
-sudo xcode-storage daemon install \
-  --root "$XCODE_STORAGE_ROOT" \
+sudo xcode-offload daemon install \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME"
 ```
 
 Check the result:
 
 ```sh
-xcode-storage doctor \
-  --root "$XCODE_STORAGE_ROOT" \
+xcode-offload doctor \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --require-shims \
   --strict
 ```
@@ -82,9 +82,9 @@ Use `mounts` when you want Apple tools to see their normal paths backed by APFS
 sparsebundles:
 
 ```sh
-xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
-sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
-xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all
+xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
+sudo xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load
+xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all
 ```
 
 `mounts install` rejects symlinked Apple paths. It also refuses to detach a
@@ -92,7 +92,7 @@ mount that belongs to another backend. If a managed directory already contains
 data, the tool moves that data under:
 
 ```text
-$XCODE_STORAGE_ROOT/Xcode/Backups/mounts/<timestamp>/
+$XCODE_OFFLOAD_ROOT/Xcode/Backups/mounts/<timestamp>/
 ```
 
 It never deletes backups for you.
@@ -102,16 +102,16 @@ It never deletes backups for you.
 `mounts verify` runs the mount flow in a disposable scratch root:
 
 ```sh
-xcode-storage mounts verify \
-  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
+xcode-offload mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-offload-verify" \
   --mode user
 ```
 
 System verification is gated because it can touch privileged launchd state:
 
 ```sh
-sudo xcode-storage mounts verify \
-  --scratch-root "/Volumes/YourExternalVolume/xcode-storage-verify" \
+sudo xcode-offload mounts verify \
+  --scratch-root "/Volumes/YourExternalVolume/xcode-offload-verify" \
   --mode system \
   --allow-system
 ```
@@ -122,17 +122,17 @@ sudo xcode-storage mounts verify \
 ## Command groups
 
 ```text
-xcode-storage doctor
-xcode-storage repair
-xcode-storage init
-xcode-storage mount devices|caches
-xcode-storage unmount devices|caches
-xcode-storage install-shims
-xcode-storage daemon install
-xcode-storage launchd install
-xcode-storage mounts install|repair|status|verify|uninstall
-xcode-storage xcodes install-profile|doctor|env
-xcode-storage sim runtimes|devices|recreate|open
+xcode-offload doctor
+xcode-offload repair
+xcode-offload init
+xcode-offload mount devices|caches
+xcode-offload unmount devices|caches
+xcode-offload install-shims
+xcode-offload daemon install
+xcode-offload launchd install
+xcode-offload mounts install|repair|status|verify|uninstall
+xcode-offload xcodes install-profile|doctor|env
+xcode-offload sim runtimes|devices|recreate|open
 ```
 
 The docs site has the command reference, runbooks, and troubleshooting notes.

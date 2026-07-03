@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func mountSkipsAlreadyMountedDeviceStore() throws {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
@@ -45,7 +45,7 @@ import Testing
     #expect(throws: CommandError.self) {
         _ = try actions.installLaunchd(
             config: config,
-            toolPath: "/opt/homebrew/bin/xcode-storage",
+            toolPath: "/opt/homebrew/bin/xcode-offload",
             scope: .system,
             load: false,
             dryRun: false
@@ -59,14 +59,14 @@ import Testing
 
     let plan = try actions.installLaunchd(
         config: config,
-        toolPath: "/opt/homebrew/bin/xcode-storage",
+        toolPath: "/opt/homebrew/bin/xcode-offload",
         scope: .user,
         load: true,
         dryRun: true
     )
 
-    #expect(plan.contains("write /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
-    #expect(plan.contains("launchctl bootstrap gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
+    #expect(plan.contains("write /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-offload.device-store.plist"))
+    #expect(plan.contains("launchctl bootstrap gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-offload.device-store.plist"))
 }
 
 @Test func uninstallLaunchdDryRunPlansBothScopes() throws {
@@ -80,10 +80,10 @@ import Testing
         dryRun: true
     )
 
-    #expect(plan.contains("launchctl bootout gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist || true"))
-    #expect(plan.contains("rm -f /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-storage.device-store.plist"))
-    #expect(plan.contains("launchctl bootout system /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist || true"))
-    #expect(plan.contains("rm -f /Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-storage.mount-coresimulator-caches"))
+    #expect(plan.contains("launchctl bootout gui/\(getuid()) /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-offload.device-store.plist || true"))
+    #expect(plan.contains("rm -f /Users/rudi/Library/LaunchAgents/io.github.rudironsoni.xcode-offload.device-store.plist"))
+    #expect(plan.contains("launchctl bootout system /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist || true"))
+    #expect(plan.contains("rm -f /Library/PrivilegedHelperTools/io.github.rudironsoni.xcode-offload.mount-coresimulator-caches"))
 }
 
 @Test func systemLaunchdDryRunCreatesPrivilegedTargetDirectories() throws {
@@ -92,7 +92,7 @@ import Testing
 
     let plan = try actions.installLaunchd(
         config: config,
-        toolPath: "/opt/homebrew/bin/xcode-storage",
+        toolPath: "/opt/homebrew/bin/xcode-offload",
         scope: .system,
         load: false,
         dryRun: true

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func simulatorListsAvailableDevicesByDefault() throws {
     let runner = RecordingRunner { _, arguments, _ in

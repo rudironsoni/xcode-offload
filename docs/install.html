@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Install xcode-storage</title>
-    <meta name="description" content="Configure xcode-storage with an explicit external storage root.">
+    <title>Install xcode-offload</title>
+    <meta name="description" content="Configure xcode-offload with an explicit external storage root.">
     <link rel="stylesheet" href="assets/styles.css">
   </head>
   <body>
     <header class="site-header">
       <div class="header-inner">
         <a class="brand" href="index.html">
-          <strong>xcode-storage</strong>
+          <strong>xcode-offload</strong>
           <span>APFS storage for Xcode and CoreSimulator</span>
         </a>
         <nav class="top-nav" aria-label="Primary">
@@ -20,7 +20,7 @@
           <a href="commands.html">Commands</a>
           <a href="operations.html">Operations</a>
           <a href="troubleshooting.html">Troubleshooting</a>
-          <a href="https://github.com/rudironsoni/xcode-storage">GitHub</a>
+          <a href="https://github.com/rudironsoni/xcode-offload">GitHub</a>
         </nav>
       </div>
     </header>
@@ -48,27 +48,27 @@
 
         <h2>Install the CLI</h2>
         <p>
-          Install <code>xcode-storage</code> so the command is available on your <code>PATH</code>. The examples below assume the installed command is available as <code>xcode-storage</code>.
+          Install <code>xcode-offload</code> so the command is available on your <code>PATH</code>. The examples below assume the installed command is available as <code>xcode-offload</code>.
         </p>
-        <pre><code>xcode-storage version</code></pre>
+        <pre><code>xcode-offload version</code></pre>
 
         <h2>Pick a root</h2>
         <p>
           Choose the external volume yourself. The tool will not pick one for you.
         </p>
-        <pre><code>export XCODE_STORAGE_ROOT="/Volumes/YourExternalVolume"</code></pre>
+        <pre><code>export XCODE_OFFLOAD_ROOT="/Volumes/YourExternalVolume"</code></pre>
 
         <h2>Preview user changes</h2>
-        <pre><code>xcode-storage repair \
-  --root "$XCODE_STORAGE_ROOT" \
+        <pre><code>xcode-offload repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME" \
   --scope user \
   --install-shims \
   --dry-run</code></pre>
 
         <h2>Install user-owned pieces</h2>
-        <pre><code>xcode-storage repair \
-  --root "$XCODE_STORAGE_ROOT" \
+        <pre><code>xcode-offload repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME" \
   --scope user \
   --install-shims \
@@ -78,16 +78,16 @@
         </p>
 
         <h2>Install the system helper</h2>
-        <pre><code>sudo xcode-storage daemon install \
-  --root "$XCODE_STORAGE_ROOT" \
+        <pre><code>sudo xcode-offload daemon install \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --home "$HOME"</code></pre>
         <p>
           <code>daemon install</code> and <code>launchd install</code> install the same system LaunchDaemon and helper.
         </p>
 
         <h2>Run the doctor</h2>
-        <pre><code>xcode-storage doctor \
-  --root "$XCODE_STORAGE_ROOT" \
+        <pre><code>xcode-offload doctor \
+  --root "$XCODE_OFFLOAD_ROOT" \
   --require-shims \
   --strict</code></pre>
 
@@ -95,9 +95,9 @@
         <p>
           For direct mounts at the Apple paths, use the <code>mounts</code> group:
         </p>
-        <pre><code>xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope user --load
-sudo xcode-storage mounts install --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope system --load
-xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope all</code></pre>
+        <pre><code>xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
+sudo xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load
+xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all</code></pre>
 
         <div class="note">
           Keep the external volume mounted before opening Xcode or Simulator. If the volume is missing, launchd can only log the missing root and try again later.
@@ -107,7 +107,7 @@ xcode-storage mounts status --root "$XCODE_STORAGE_ROOT" --home "$HOME" --scope 
 
     <footer class="site-footer">
       <div class="footer-inner">
-        Docs for <code>xcode-storage</code>. Source: github.com/rudironsoni/xcode-storage.
+        Docs for <code>xcode-offload</code>. Source: github.com/rudironsoni/xcode-offload.
       </div>
     </footer>
   </body>

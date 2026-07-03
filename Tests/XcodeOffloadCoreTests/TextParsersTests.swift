@@ -1,5 +1,5 @@
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func mountLineFindsExactMountPoint() {
     let output = """
@@ -31,15 +31,15 @@ import Testing
 
 @Test func mountLineMatchesCanonicalTemporaryPaths() {
     let output = """
-    /dev/disk13s1 on /private/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)
+    /dev/disk13s1 on /private/tmp/xcode-offload/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)
     """
 
     let line = TextParsers.mountLine(
-        for: "/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices",
+        for: "/tmp/xcode-offload/home/Library/Developer/CoreSimulator/Devices",
         in: output
     )
 
-    #expect(line == "/dev/disk13s1 on /private/tmp/xcode-storage/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)")
+    #expect(line == "/dev/disk13s1 on /private/tmp/xcode-offload/home/Library/Developer/CoreSimulator/Devices (apfs, local, nobrowse)")
 }
 
 @Test func diskutilParsersTrimValues() {
@@ -97,7 +97,7 @@ import Testing
 @Test func launchctlLastExitParserFindsStatus() {
     let output = """
     domain = system
-    service = io.github.rudironsoni.xcode-storage.caches
+    service = io.github.rudironsoni.xcode-offload.caches
     last exit code = 0
     """
 
@@ -106,7 +106,7 @@ import Testing
 
 @Test func launchctlLastExitParserFindsNonZeroStatus() {
     let output = """
-    path = /Library/LaunchDaemons/io.github.rudironsoni.xcode-storage.caches.plist
+    path = /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist
     last exit status = -78
     """
 

@@ -29,8 +29,8 @@ public struct LaunchdTemplates {
             ],
             runAtLoad: true,
             startInterval: nil,
-            stdout: "\(config.home)/Library/Logs/xcode-storage-device-store.log",
-            stderr: "\(config.home)/Library/Logs/xcode-storage-device-store.err"
+            stdout: "\(config.home)/Library/Logs/xcode-offload-device-store.log",
+            stderr: "\(config.home)/Library/Logs/xcode-offload-device-store.err"
         )
     }
 
@@ -40,8 +40,8 @@ public struct LaunchdTemplates {
             programArguments: [config.cacheHelperPath],
             runAtLoad: true,
             startInterval: 60,
-            stdout: "/var/log/xcode-storage-coresimulator-caches.log",
-            stderr: "/var/log/xcode-storage-coresimulator-caches.err"
+            stdout: "/var/log/xcode-offload-coresimulator-caches.log",
+            stderr: "/var/log/xcode-offload-coresimulator-caches.err"
         )
     }
 
@@ -53,8 +53,8 @@ public struct LaunchdTemplates {
         root=\(config.root.shellQuoted)
         image="$root/Xcode/CoreSimulator/Caches.sparsebundle"
         mountpoint=\(config.cacheMount.shellQuoted)
-        lockdir="/var/run/io.github.rudironsoni.xcode-storage.caches.lock"
-        backup_root="/var/tmp/io.github.rudironsoni.xcode-storage.caches-backups"
+        lockdir="/var/run/io.github.rudironsoni.xcode-offload.caches.lock"
+        backup_root="/var/tmp/io.github.rudironsoni.xcode-offload.caches-backups"
 
         fail() {
           echo "xcode CoreSimulator cache mount: $*" >&2

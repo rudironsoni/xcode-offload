@@ -25,8 +25,8 @@ public struct MountLaunchdTemplates {
             ],
             runAtLoad: true,
             startInterval: 60,
-            stdout: "\(config.home)/Library/Logs/xcode-storage-mounts-user.log",
-            stderr: "\(config.home)/Library/Logs/xcode-storage-mounts-user.err"
+            stdout: "\(config.home)/Library/Logs/xcode-offload-mounts-user.log",
+            stderr: "\(config.home)/Library/Logs/xcode-offload-mounts-user.err"
         )
     }
 
@@ -36,8 +36,8 @@ public struct MountLaunchdTemplates {
             programArguments: [config.mountSystemHelperPath],
             runAtLoad: true,
             startInterval: 60,
-            stdout: "/var/log/xcode-storage-mounts-system.log",
-            stderr: "/var/log/xcode-storage-mounts-system.err"
+            stdout: "/var/log/xcode-offload-mounts-system.log",
+            stderr: "/var/log/xcode-offload-mounts-system.err"
         )
     }
 
@@ -62,7 +62,7 @@ public struct MountLaunchdTemplates {
         preparations=(\(preparations))
 
         log() {
-          echo "xcode-storage mount system: $*" >&2
+          echo "xcode-offload mount system: $*" >&2
         }
 
         fail() {
@@ -177,7 +177,7 @@ public struct MountLaunchdTemplates {
 
         prepare_images_sparsebundle() {
           local image="$1"
-          local tmp="/tmp/xcode-storage-images-$$"
+          local tmp="/tmp/xcode-offload-images-$$"
           /bin/mkdir -p "$tmp"
           local attached=0
           {

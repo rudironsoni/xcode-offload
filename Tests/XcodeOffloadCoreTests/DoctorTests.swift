@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import XcodeStorageCore
+@testable import XcodeOffloadCore
 
 @Test func doctorReportsMountedConfiguredSparsebundles() throws {
     let root = try temporaryDirectory()
@@ -178,7 +178,7 @@ private func createDoctorFixture(config: StorageConfig) throws {
 
 private func temporaryDirectory() throws -> String {
     let url = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("xcode-storage-test-\(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("xcode-offload-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url.path
 }
