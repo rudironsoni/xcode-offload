@@ -104,6 +104,8 @@ import Testing
     #expect(templates.userAgentPlist.contains("<string>mounts</string>"))
     #expect(templates.systemHelper.contains("reject_symlink"))
     #expect(templates.systemHelper.contains("nested_mounts_under"))
+    #expect(templates.systemHelper.contains("stale_attached_devices"))
+    #expect(templates.systemHelper.contains("detach_stale_attachments"))
     #expect(templates.systemHelper.contains("mountpoint contains active nested mounts"))
     #expect(templates.systemHelper.contains(config.mountSystemBackupRoot))
     #expect(!templates.systemHelper.contains(config.mountUserBackupRoot))
@@ -122,6 +124,7 @@ import Testing
     #expect(helper.contains("images=('/Volumes/External Xcode/Xcode/CoreSimulator/Caches.sparsebundle'"))
     #expect(helper.contains("mountpoints=(/Library/Developer/CoreSimulator/Caches"))
     #expect(helper.contains("mounted_from_configured_backend"))
+    #expect(helper.contains("detach_stale_attachments"))
     #expect(helper.contains("already mounted from a different backend"))
     #expect(helper.contains("trim(value) == image"))
     #expect(helper.contains("equivalent_path(value, mountpoint)"))
@@ -158,6 +161,38 @@ import Testing
 
     #expect(actions.contains("already prepared /Library/Developer/CoreSimulator/Images"))
     #expect(!actions.contains { $0.contains("/tmp/xcode-offload-images-") && $0.contains("hdiutil attach") })
+}
+
+@Test func mountRepairDetachesStaleImagesBeforePreparingImagesSparsebundle() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+
+    let images = try #require(ManagedMounts.all(config: config).first { $0.id == "images" })
+    let hdiutilInfo = """
+    image-path      : \(images.imagePath)
+    /dev/disk10\tGUID_partition_scheme
+    /dev/disk11s1\t41504653-0000-11AA-AA11-00306543ECAC
+    """
+
+    let runner = MountStubRunner(results: [
+        "/sbin/mount": ProcessResult(exitCode: 0, stdout: "", stderr: ""),
+        "/usr/bin/hdiutil": ProcessResult(exitCode: 0, stdout: hdiutilInfo, stderr: "")
+    ])
+
+    let actions = try MountActions(runner: runner).repair(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-offload",
+        scope: .system,
+        load: false,
+        dryRun: true
+    )
+
+    let detachIndex = try #require(actions.firstIndex { $0 == "/usr/bin/hdiutil detach /dev/disk10" })
+    let prepareIndex = try #require(actions.firstIndex { $0.contains("hdiutil attach") && $0.contains(images.imagePath) && $0.contains("xcode-offload-images-") })
+    #expect(detachIndex < prepareIndex)
+    #expect(!actions.contains("/usr/bin/hdiutil detach /dev/disk11s1"))
 }
 
 @Test func userMountInstallUsesUserBackupRootForExistingData() throws {
@@ -244,6 +279,37 @@ import Testing
         #expect(error.message.contains(runtimeMount))
         #expect(error.message.contains("Shut down simulators"))
     }
+}
+
+@Test func mountRepairDetachesStaleAttachedImageBeforeAttach() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+
+    let hdiutilInfo = """
+    image-path      : \(config.deviceStoreImage)
+    /dev/disk12\tGUID_partition_scheme
+    /dev/disk13s1\t41504653-0000-11AA-AA11-00306543ECAC
+    """
+
+    let runner = MountStubRunner(results: [
+        "/sbin/mount": ProcessResult(exitCode: 0, stdout: "", stderr: ""),
+        "/usr/bin/hdiutil": ProcessResult(exitCode: 0, stdout: hdiutilInfo, stderr: "")
+    ])
+
+    let actions = try MountActions(runner: runner).repair(
+        config: config,
+        toolPath: "/opt/homebrew/bin/xcode-offload",
+        scope: .user,
+        load: false,
+        dryRun: true
+    )
+
+    let detachIndex = try #require(actions.firstIndex { $0 == "/usr/bin/hdiutil detach /dev/disk12" })
+    let attachIndex = try #require(actions.firstIndex { $0.contains("hdiutil attach") && $0.contains(config.deviceStoreImage) })
+    #expect(detachIndex < attachIndex)
+    #expect(!actions.contains("/usr/bin/hdiutil detach /dev/disk13s1"))
 }
 
 @Test func mountUninstallRefusesToDetachWrongBackend() throws {

@@ -70,6 +70,26 @@ public enum TextParsers {
             }
     }
 
+    public static func hdiutilAttachedDevices(imagePath: String, in output: String) -> [String] {
+        output
+            .components(separatedBy: "================================================")
+            .filter { value(forDiskutilKey: "image-path", in: $0) == imagePath }
+            .compactMap { block in
+                block
+                    .split(separator: "\n", omittingEmptySubsequences: false)
+                    .lazy
+                    .compactMap { line -> String? in
+                        let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+                        guard let device = fields.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+                              isTopLevelDiskDevice(device) else {
+                            return nil
+                        }
+                        return device
+                    }
+                    .first
+            }
+    }
+
     public static func launchctlLastExitStatus(from output: String) -> Int? {
         for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -116,6 +136,13 @@ public enum TextParsers {
         }
 
         return nil
+    }
+
+    private static func isTopLevelDiskDevice(_ value: String) -> Bool {
+        guard value.hasPrefix("/dev/disk") else {
+            return false
+        }
+        return value.dropFirst("/dev/disk".count).allSatisfy(\.isNumber)
     }
 
     private static func mountedPath(fromMountLine line: String) -> String? {

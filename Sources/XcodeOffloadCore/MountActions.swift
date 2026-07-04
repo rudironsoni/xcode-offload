@@ -128,6 +128,7 @@ public struct MountActions {
             }
 
             if managedMount.preparation == .coreSimulatorImages {
+                actions.append(contentsOf: try detachStaleAttachments(for: managedMount, dryRun: dryRun))
                 actions.append(contentsOf: try prepareImagesSparsebundle(managedMount, dryRun: dryRun))
             }
         }
@@ -163,7 +164,8 @@ public struct MountActions {
             throw CommandError("missing sparsebundle: \(managedMount.imagePath)", exitCode: 78)
         }
 
-        var actions = try prepareMountpoint(managedMount, backupRoot: backupRoot, dryRun: dryRun)
+        var actions = try detachStaleAttachments(for: managedMount, dryRun: dryRun)
+        actions.append(contentsOf: try prepareMountpoint(managedMount, backupRoot: backupRoot, dryRun: dryRun))
         let command = [
             "/usr/bin/hdiutil",
             "attach",
@@ -177,6 +179,30 @@ public struct MountActions {
         actions.append(command.map(\.shellQuoted).joined(separator: " "))
         if !dryRun {
             try runOrThrow(command)
+        }
+        return actions
+    }
+
+    private func detachStaleAttachments(for managedMount: ManagedMount, dryRun: Bool) throws -> [String] {
+        guard let result = try? runner.run("/usr/bin/hdiutil", arguments: ["info"], environment: [:]), result.succeeded else {
+            return []
+        }
+        guard !TextParsers.hdiutilInfoContains(
+            imagePath: managedMount.imagePath,
+            mountPoint: managedMount.mountPoint,
+            in: result.stdout
+        ) else {
+            return []
+        }
+
+        let devices = TextParsers.hdiutilAttachedDevices(imagePath: managedMount.imagePath, in: result.stdout)
+        var actions: [String] = []
+        for device in devices {
+            let command = ["/usr/bin/hdiutil", "detach", device]
+            actions.append(command.map(\.shellQuoted).joined(separator: " "))
+            if !dryRun {
+                try runOrThrow(command)
+            }
         }
         return actions
     }

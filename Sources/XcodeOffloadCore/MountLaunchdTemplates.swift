@@ -126,6 +126,62 @@ public struct MountLaunchdTemplates {
           '
         }
 
+        stale_attached_devices() {
+          local image="$1"
+          /usr/bin/hdiutil info | /usr/bin/awk -v image="$image" '
+            function trim(value) {
+              sub(/^[[:space:]]+/, "", value)
+              sub(/[[:space:]]+$/, "", value)
+              return value
+            }
+            function flush() {
+              if (seen_image) {
+                if (device_count > 0) {
+                  print devices[1]
+                }
+              }
+              seen_image = 0
+              device_count = 0
+              delete devices
+            }
+            /^=+$/ {
+              flush()
+              next
+            }
+            /^[[:space:]]*image-path[[:space:]]*:/ {
+              value = $0
+              sub(/^[^:]*:/, "", value)
+              if (trim(value) == image) {
+                seen_image = 1
+              }
+              next
+            }
+            /^\\/dev\\/disk/ {
+              split($0, fields, "\t")
+              device = trim(fields[1])
+              if (device ~ /^\\/dev\\/disk[0-9]+$/) {
+                devices[++device_count] = device
+              }
+            }
+            END {
+              flush()
+            }
+          '
+        }
+
+        detach_stale_attachments() {
+          local image="$1"
+          local mountpoint="$2"
+          if mounted_from_configured_backend "$image" "$mountpoint"; then
+            return 0
+          fi
+          local device
+          stale_attached_devices "$image" | while IFS= read -r device; do
+            [[ -n "$device" ]] || continue
+            /usr/bin/hdiutil detach "$device"
+          done
+        }
+
         reject_symlink() {
           if [[ -L "$1" ]]; then
             fail "mountpoint must not be a symlink: $1"
@@ -220,6 +276,7 @@ public struct MountLaunchdTemplates {
           if [[ "$preparation" == "coreSimulatorImages" ]]; then
             prepare_images_sparsebundle "$image"
           fi
+          detach_stale_attachments "$image" "$mountpoint"
           prepare_mountpoint "$id" "$mountpoint" "$mode"
           /usr/bin/hdiutil attach "$image" -mountpoint "$mountpoint" -nobrowse -owners on
           mounted_any=1

@@ -103,6 +103,7 @@ struct CLI {
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
         let installShims = arguments.popFlag("--install-shims")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments, explicitShimDir: explicitShimDir)
         try arguments.rejectUnknown()
 
@@ -116,50 +117,52 @@ struct CLI {
             plan.append(contentsOf: try actions.installShims(config: config, toolPath: toolPath, dryRun: dryRun))
         }
 
-        plan.forEach { print($0) }
+        printActions(plan, verbose: verbose)
     }
 
     private func initialize(arguments: inout Arguments) throws {
         let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
         let createImages = !arguments.popFlag("--no-create-images")
+        let verbose = arguments.popFlag("--verbose")
         try arguments.rejectUnknown()
 
         let actions = try StorageActions().initialize(config: config, createImages: createImages, dryRun: dryRun)
-        for action in actions {
-            print(action)
-        }
+        printActions(actions, verbose: verbose)
     }
 
     private func mount(arguments: inout Arguments) throws {
         let kind = try mountKind(arguments.popCommand())
         let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
+        let verbose = arguments.popFlag("--verbose")
         try arguments.rejectUnknown()
 
         let actions = try StorageActions().mount(kind, config: config, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func unmount(arguments: inout Arguments) throws {
         let kind = try mountKind(arguments.popCommand())
         let config = try makeConfig(arguments: &arguments)
         let dryRun = arguments.popFlag("--dry-run")
+        let verbose = arguments.popFlag("--verbose")
         try arguments.rejectUnknown()
 
         let actions = try StorageActions().unmount(kind, config: config, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func installShims(arguments: inout Arguments) throws {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let explicitShimDir = arguments.popOption("--shim-dir")
         let dryRun = arguments.popFlag("--dry-run")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments, explicitShimDir: explicitShimDir)
         try arguments.rejectUnknown()
 
         let actions = try StorageActions().installShims(config: config, toolPath: toolPath, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func installLaunchd(arguments: inout Arguments) throws {
@@ -167,6 +170,7 @@ struct CLI {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
@@ -177,13 +181,14 @@ struct CLI {
             load: load,
             dryRun: dryRun
         )
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func uninstallLaunchd(arguments: inout Arguments) throws {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let unload = arguments.popFlag("--unload")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
@@ -193,7 +198,7 @@ struct CLI {
             unload: unload,
             dryRun: dryRun
         )
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func daemon(arguments: inout Arguments) throws {
@@ -248,11 +253,12 @@ struct CLI {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
         let actions = try MountActions().install(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func mountsRepair(arguments: inout Arguments) throws {
@@ -260,27 +266,30 @@ struct CLI {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
         let actions = try MountActions().repair(config: config, toolPath: toolPath, scope: scope, load: load, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func mountsUninstall(arguments: inout Arguments) throws {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let dryRun = arguments.popFlag("--dry-run")
         let unload = arguments.popFlag("--unload")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
         let actions = try MountActions().uninstall(config: config, scope: scope, unload: unload, dryRun: dryRun)
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func mountsStatus(arguments: inout Arguments) throws {
         let scope = try launchdScope(arguments.popOption("--scope") ?? "all")
         let json = arguments.popFlag("--json")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
@@ -291,8 +300,11 @@ struct CLI {
             FileHandle.standardOutput.write(try encoder.encode(report))
             print()
         } else {
-            for check in report.checks {
-                print(check.humanLine)
+            MountStatusFormatter.messages(for: report).forEach { print($0) }
+            if verbose {
+                print()
+                print("Checks:")
+                report.checks.forEach { print("  \($0.humanLine)") }
             }
             if report.passed {
                 print("OK xcode-offload mounts status passed")
@@ -371,6 +383,7 @@ struct CLI {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let dryRun = arguments.popFlag("--dry-run")
         let load = arguments.popFlag("--load")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
@@ -380,7 +393,7 @@ struct CLI {
             load: load,
             dryRun: dryRun
         )
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func xcodesDoctor(arguments: inout Arguments) throws {
@@ -424,6 +437,7 @@ struct CLI {
         case "install":
             let directory = arguments.popOption("--directory")
             let dryRun = arguments.popFlag("--dry-run")
+            let verbose = arguments.popFlag("--verbose")
             let resolvedDirectory: String
             if let directory {
                 try arguments.rejectUnknown()
@@ -438,7 +452,7 @@ struct CLI {
                 directory: resolvedDirectory,
                 dryRun: dryRun
             )
-            actions.forEach { print($0) }
+            printActions(actions, verbose: verbose)
         case "help", "-h", "--help":
             printXcodesHelp()
         default:
@@ -450,6 +464,7 @@ struct CLI {
         let toolPath = arguments.popOption("--tool-path") ?? defaultToolPath()
         let dryRun = arguments.popFlag("--dry-run")
         let load = !arguments.popFlag("--no-load")
+        let verbose = arguments.popFlag("--verbose")
         let config = try makeConfig(arguments: &arguments)
         try arguments.rejectUnknown()
 
@@ -460,7 +475,7 @@ struct CLI {
             load: load,
             dryRun: dryRun
         )
-        actions.forEach { print($0) }
+        printActions(actions, verbose: verbose)
     }
 
     private func sim(arguments: inout Arguments) throws {
@@ -524,6 +539,23 @@ struct CLI {
         }
     }
 
+    private func printActions(_ actions: [String], verbose: Bool) {
+        let messages = ActionLogFormatter.messages(for: actions)
+        if messages.isEmpty {
+            print("OK no changes needed")
+        } else {
+            messages.forEach { print("==> \($0)") }
+        }
+
+        if verbose {
+            if !messages.isEmpty {
+                print()
+            }
+            print("Commands:")
+            actions.forEach { print("  \($0)") }
+        }
+    }
+
     private func mountKind(_ value: String?) throws -> MountKind {
         guard let value, let kind = MountKind(rawValue: value) else {
             throw CommandError("expected mount kind: devices or caches", exitCode: 64)
@@ -584,23 +616,23 @@ struct CLI {
 
             Usage:
               xcode-offload doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]
-              xcode-offload repair [--root PATH] [--home PATH] [--tool-path PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run]
-              xcode-offload init [--root PATH] [--dry-run] [--no-create-images]
-              xcode-offload mount devices|caches [--root PATH] [--dry-run]
-              xcode-offload unmount devices|caches [--root PATH] [--dry-run]
-              xcode-offload install-shims [--root PATH] [--shim-dir PATH] [--tool-path PATH] [--dry-run]
-              xcode-offload daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-              xcode-offload launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
-              xcode-offload mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-offload mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
-              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-offload repair [--root PATH] [--home PATH] [--shim-dir PATH] [--scope user|system|all] [--install-shims] [--load] [--dry-run] [--verbose]
+              xcode-offload init [--root PATH] [--dry-run] [--no-create-images] [--verbose]
+              xcode-offload mount devices|caches [--root PATH] [--dry-run] [--verbose]
+              xcode-offload unmount devices|caches [--root PATH] [--dry-run] [--verbose]
+              xcode-offload install-shims [--root PATH] [--shim-dir PATH] [--dry-run] [--verbose]
+              xcode-offload daemon install [--root PATH] [--home PATH] [--no-load] [--dry-run] [--verbose]
+              xcode-offload launchd install [--root PATH] [--home PATH] [--no-load] [--dry-run] [--verbose]
+              xcode-offload mounts install [--root PATH] [--home PATH] [--scope user|system|all] [--load] [--dry-run] [--verbose]
+              xcode-offload mounts repair [--root PATH] [--home PATH] [--scope user|system|all] [--load] [--dry-run] [--verbose]
+              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run] [--verbose]
+              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json] [--verbose]
+              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--load] [--dry-run] [--verbose]
               xcode-offload xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
-              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
-              xcode-offload install-launchd [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-offload uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
+              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run] [--verbose]
+              xcode-offload install-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--load] [--dry-run] [--verbose]
+              xcode-offload uninstall-launchd [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run] [--verbose]
               xcode-offload sim runtimes
               xcode-offload sim devices [--all]
               xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
@@ -615,7 +647,7 @@ struct CLI {
             xcode-offload daemon manages the root LaunchDaemon for CoreSimulator caches.
 
             Usage:
-              xcode-offload daemon install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload daemon install [--root PATH] [--home PATH] [--no-load] [--dry-run] [--verbose]
             """
         )
     }
@@ -626,7 +658,7 @@ struct CLI {
             xcode-offload launchd manages launchd jobs for CoreSimulator storage.
 
             Usage:
-              xcode-offload launchd install [--root PATH] [--home PATH] [--tool-path PATH] [--no-load] [--dry-run]
+              xcode-offload launchd install [--root PATH] [--home PATH] [--no-load] [--dry-run] [--verbose]
             """
         )
     }
@@ -637,11 +669,11 @@ struct CLI {
             xcode-offload mounts manages APFS sparsebundle mountpoints at Apple paths.
 
             Usage:
-              xcode-offload mounts install [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-offload mounts repair [--root PATH] [--home PATH] [--tool-path PATH] [--scope user|system|all] [--load] [--dry-run]
-              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run]
-              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json]
-              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--tool-path PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
+              xcode-offload mounts install [--root PATH] [--home PATH] [--scope user|system|all] [--load] [--dry-run] [--verbose]
+              xcode-offload mounts repair [--root PATH] [--home PATH] [--scope user|system|all] [--load] [--dry-run] [--verbose]
+              xcode-offload mounts uninstall [--root PATH] [--home PATH] [--scope user|system|all] [--unload] [--dry-run] [--verbose]
+              xcode-offload mounts status [--root PATH] [--home PATH] [--scope user|system|all] [--json] [--verbose]
+              xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
             This mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
             """
@@ -654,9 +686,9 @@ struct CLI {
             xcode-offload xcodes configures transparent storage for xcodes and Apple tools.
 
             Usage:
-              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--tool-path PATH] [--load] [--dry-run]
+              xcode-offload xcodes install-profile [--root PATH] [--home PATH] [--load] [--dry-run] [--verbose]
               xcode-offload xcodes doctor [--root PATH] [--home PATH] [--require-xcodes] [--strict] [--json]
-              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run]
+              xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] [--dry-run] [--verbose]
 
             The profile mounts APFS sparsebundles at Apple paths and sets XCODES_DIRECTORY.
             It does not install xcrun, simctl, or xcodebuild shims.

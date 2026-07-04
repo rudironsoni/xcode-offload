@@ -94,6 +94,25 @@ import Testing
     ))
 }
 
+@Test func hdiutilAttachedDevicesReturnsDevicesForUnmountedImageBlocks() {
+    let output = """
+    image-path      : /Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle
+    /dev/disk12\tGUID_partition_scheme
+    /dev/disk12s1\tEFI
+    /dev/disk13\tEF57347C-0000-11AA-AA11-00306543ECAC
+    /dev/disk13s1\t41504653-0000-11AA-AA11-00306543ECAC
+    ================================================
+    image-path      : /Volumes/ExternalXcode/Xcode/XcodeDefaults/DerivedData.sparsebundle
+    /dev/disk14\tGUID_partition_scheme
+    /dev/disk15s1\t41504653-0000-11AA-AA11-00306543ECAC\t/Users/rudi/Library/Developer/Xcode/DerivedData
+    """
+
+    #expect(TextParsers.hdiutilAttachedDevices(
+        imagePath: "/Volumes/ExternalXcode/Xcode/CoreSimulator/DeviceSet.sparsebundle",
+        in: output
+    ) == ["/dev/disk12"])
+}
+
 @Test func launchctlLastExitParserFindsStatus() {
     let output = """
     domain = system

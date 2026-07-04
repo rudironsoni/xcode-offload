@@ -125,6 +125,16 @@ smoke-cli:
 	    exit 1; \
 	  fi; \
 	}; \
+	reject_output() { \
+	  description="$$1"; \
+	  unexpected="$$2"; \
+	  output="$$3"; \
+	  if printf '%s' "$$output" | grep -F "$$unexpected" >/dev/null; then \
+	    echo "unexpected output for $$description: $$unexpected" >&2; \
+	    printf '%s\n' "$$output" >&2; \
+	    exit 1; \
+	  fi; \
+	}; \
 	expect_failure() { \
 	  if "$$@" >"$$tmp/stdout" 2>"$$tmp/stderr"; then \
 	    echo "expected failure: $$*" >&2; \
@@ -140,26 +150,36 @@ smoke-cli:
 	expect_failure "$$bin" mounts verify --mode user; \
 	grep -F "missing scratch root" "$$tmp/stderr" >/dev/null; \
 	output="$$("$$bin" init --root "$$tmp/External Disk" --dry-run --no-create-images)"; \
-	require_output "init dry-run" "mkdir -p '$$tmp/External Disk/Xcode'" "$$output"; \
+	require_output "init dry-run" "OK no changes needed" "$$output"; \
+	reject_output "init dry-run" "mkdir -p" "$$output"; \
+	output="$$("$$bin" init --root "$$tmp/External Disk" --dry-run --no-create-images --verbose)"; \
+	require_output "init verbose dry-run" "Commands:" "$$output"; \
+	require_output "init verbose dry-run" "mkdir -p '$$tmp/External Disk/Xcode'" "$$output"; \
 	output="$$("$$bin" daemon install --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run)"; \
-	require_output "daemon install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist" "$$output"; \
+	require_output "daemon install dry-run" "==> Install system LaunchDaemon" "$$output"; \
+	reject_output "daemon install dry-run" "write /Library/LaunchDaemons" "$$output"; \
 	output="$$("$$bin" launchd install --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run)"; \
-	require_output "launchd install dry-run" "write /Library/LaunchDaemons/io.github.rudironsoni.xcode-offload.caches.plist" "$$output"; \
+	require_output "launchd install dry-run" "==> Install system LaunchDaemon" "$$output"; \
+	reject_output "launchd install dry-run" "write /Library/LaunchDaemons" "$$output"; \
 	output="$$("$$bin" mounts install --root "$$tmp/External Disk" --home "$$tmp/Home" --scope user --dry-run)"; \
-	require_output "mounts user install dry-run" "DerivedData.sparsebundle" "$$output"; \
-	require_output "mounts user install dry-run" "$$tmp/Home/Library/Developer/Xcode/DerivedData" "$$output"; \
+	require_output "mounts user install dry-run" "==> Mount Xcode DerivedData" "$$output"; \
+	reject_output "mounts user install dry-run" "DerivedData.sparsebundle" "$$output"; \
+	output="$$("$$bin" mounts install --root "$$tmp/External Disk" --home "$$tmp/Home" --scope user --dry-run --verbose)"; \
+	require_output "mounts user verbose dry-run" "Commands:" "$$output"; \
+	require_output "mounts user verbose dry-run" "DerivedData.sparsebundle" "$$output"; \
 	if "$$bin" mounts install --root "$$tmp/External Disk" --home "$$tmp/Home" --scope system --dry-run >"$$tmp/mounts-system.out" 2>"$$tmp/mounts-system.err"; then \
 	  output="$$(cat "$$tmp/mounts-system.out")"; \
-	  require_output "mounts system install dry-run" "/Library/Developer/CoreSimulator/Images" "$$output"; \
-	  require_output "mounts system install dry-run" "/Applications/Xcodes" "$$output"; \
-	  require_output "mounts system install dry-run" "chmod 1777" "$$output"; \
+	  require_output "mounts system install dry-run" "==> Prepare CoreSimulator Images sparsebundle" "$$output"; \
+	  require_output "mounts system install dry-run" "==> Mount Xcode applications" "$$output"; \
+	  reject_output "mounts system install dry-run" "chmod 1777" "$$output"; \
 	else \
 	  grep -F "mountpoint is already mounted from a different backend" "$$tmp/mounts-system.err" >/dev/null; \
 	fi; \
 	if "$$bin" xcodes install-profile --root "$$tmp/External Disk" --home "$$tmp/Home" --dry-run >"$$tmp/xcodes-profile.out" 2>"$$tmp/xcodes-profile.err"; then \
 	  output="$$(cat "$$tmp/xcodes-profile.out")"; \
-	  require_output "xcodes profile dry-run" "XcodeApps.sparsebundle" "$$output"; \
-	  require_output "xcodes profile dry-run" "/bin/launchctl setenv XCODES_DIRECTORY /Applications/Xcodes" "$$output"; \
+	  require_output "xcodes profile dry-run" "==> Mount Xcode applications" "$$output"; \
+	  require_output "xcodes profile dry-run" "==> Set XCODES_DIRECTORY for launchd sessions" "$$output"; \
+	  reject_output "xcodes profile dry-run" "XcodeApps.sparsebundle" "$$output"; \
 	else \
 	  grep -F "mountpoint is already mounted from a different backend" "$$tmp/xcodes-profile.err" >/dev/null; \
 	fi; \
