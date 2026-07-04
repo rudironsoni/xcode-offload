@@ -50,7 +50,7 @@
         <ol>
           <li>Mount the external volume.</li>
           <li>Set <code>XCODE_OFFLOAD_ROOT</code> to a path on that volume.</li>
-          <li>Run <code>repair --dry-run</code> and read the plan.</li>
+          <li>Run <code>repair --dry-run</code> and read the human-readable plan.</li>
           <li>Run user repair with <code>--load</code>.</li>
           <li>Install the system daemon with sudo.</li>
           <li>Run <code>doctor --strict</code>.</li>
@@ -66,6 +66,9 @@ xcode-offload doctor --root "$XCODE_OFFLOAD_ROOT" --require-shims --strict</code
 xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
 sudo xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load
 xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all</code></pre>
+        <p>
+          Normal output is intentionally short. Add <code>--verbose</code> to install, repair, uninstall, or status commands when you need the raw command list or every individual mount check.
+        </p>
 
         <h2>Verify in a scratch root</h2>
         <pre><code>xcode-offload mounts verify \

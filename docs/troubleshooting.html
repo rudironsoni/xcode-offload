@@ -52,6 +52,13 @@
           Use JSON when you need exact labels and details. Use the normal output for quick terminal checks.
         </p>
 
+        <h2>Need the full command log</h2>
+        <p>
+          Action commands show concise steps by default. Re-run the same command with <code>--verbose</code> to see both the readable summary and the underlying commands sent to macOS tools.
+        </p>
+        <pre><code>sudo xcode-offload mounts repair --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load --verbose
+xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all --verbose</code></pre>
+
         <h2>External root is missing</h2>
         <p>
           Mount the external volume, then run the doctor again. The tool will not choose a fallback volume.

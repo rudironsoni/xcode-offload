@@ -1,16 +1,12 @@
 # xcode-offload
 
-`xcode-offload` moves Xcode and CoreSimulator data to external storage without
-changing the paths Apple tools expect.
+`xcode-offload` moves Xcode and CoreSimulator storage to an external volume without changing the paths Apple tools expect. It is for Macs where Xcode, simulators, DerivedData, archives, and CoreSimulator caches are eating internal disk.
 
-It is for Macs where Xcode, simulators, DerivedData, archives, and
-CoreSimulator caches are eating the internal disk. The tool mounts APFS
-sparsebundles at the normal Apple paths. It does not use symlinks for those
-paths.
+The tool mounts APFS sparsebundles at normal Apple paths. It does not use symlinks for managed paths.
 
 Docs: https://rudironsoni.github.io/xcode-offload/
 
-## What it manages
+## What It Manages
 
 - `~/Library/Developer/CoreSimulator/Devices`
 - `~/Library/Developer/Xcode/DerivedData`
@@ -29,7 +25,7 @@ export XCODE_OFFLOAD_ROOT="/Volumes/YourExternalVolume"
 
 `xcode-offload` never guesses a machine-specific volume.
 
-## Quick start
+## Quick Start
 
 Install `xcode-offload`, then set the external storage root:
 
@@ -76,20 +72,32 @@ xcode-offload doctor \
   --strict
 ```
 
-## APFS mount mode
+## APFS Mount Mode
 
-Use `mounts` when you want Apple tools to see their normal paths backed by APFS
-sparsebundles:
+Use `mounts` when you want Apple tools to see their normal paths backed by APFS sparsebundles:
 
 ```sh
-xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
-sudo xcode-offload mounts install --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope system --load
-xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope all
+xcode-offload mounts install \
+  --root "$XCODE_OFFLOAD_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --load
+
+sudo xcode-offload mounts install \
+  --root "$XCODE_OFFLOAD_ROOT" \
+  --home "$HOME" \
+  --scope system \
+  --load
+
+xcode-offload mounts status \
+  --root "$XCODE_OFFLOAD_ROOT" \
+  --home "$HOME" \
+  --scope all
 ```
 
-`mounts install` rejects symlinked Apple paths. It also refuses to detach a
-mount that belongs to another backend. If a managed directory already contains
-data, the tool moves that data under:
+Default command output is concise. It shows the human-readable steps and status that matter during normal use. Add `--verbose` when you need raw commands or the full mount-check list.
+
+`mounts install` rejects symlinked Apple paths. It also refuses to detach a mount that belongs to another backend. If a managed directory already contains data, the tool moves that data under:
 
 ```text
 $XCODE_OFFLOAD_ROOT/Xcode/Backups/mounts/<timestamp>/
@@ -116,10 +124,9 @@ sudo xcode-offload mounts verify \
   --allow-system
 ```
 
-`--mode e2e` can also recreate a disposable simulator, but only when
-`--allow-sim-delete` is set.
+`--mode e2e` can also recreate a disposable simulator, but only when `--allow-sim-delete` is set.
 
-## Command groups
+## Command Groups
 
 ```text
 xcode-offload doctor

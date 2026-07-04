@@ -42,9 +42,17 @@
           <p class="eyebrow">reference</p>
           <h1>Command reference</h1>
           <p class="lead">
-            Use <code>--dry-run</code> before a command changes mount state, launchd jobs, or files under Apple developer paths.
+            Use <code>--dry-run</code> before a command changes mount state, launchd jobs, or files under Apple developer paths. Add <code>--verbose</code> when you need raw commands or the full mount-check list.
           </p>
         </div>
+
+        <h2>Output behavior</h2>
+        <p>
+          Commands that change files, mounts, or launchd jobs print concise human-readable steps by default. They do not print every <code>mkdir</code>, <code>hdiutil</code>, <code>chmod</code>, or <code>launchctl</code> call unless <code>--verbose</code> is present.
+        </p>
+        <p>
+          <code>mounts status</code> also stays concise by default. Use <code>mounts status --verbose</code> when you need every PASS, WARN, and FAIL check with exact paths and mount details.
+        </p>
 
         <h2>Health checks</h2>
         <pre><code>xcode-offload doctor [--root PATH] [--require-shims] [--skip-simctl] [--strict] [--json]</code></pre>
