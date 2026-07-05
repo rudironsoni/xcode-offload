@@ -552,6 +552,9 @@ struct CLI {
                 bootTimeoutSeconds: timeout
             )
             actions.forEach { print($0) }
+        case "help":
+            try arguments.rejectUnknown()
+            printSimHelp()
         default:
             throw CommandError("unknown sim command: \(subcommand)", exitCode: 64)
         }
@@ -712,6 +715,22 @@ struct CLI {
               xcode-offload mounts verify --scratch-root PATH [--mode user|system|e2e] [--home PATH] [--runtime ID] [--device-type ID] [--keep-artifacts] [--allow-system] [--allow-sim-delete]
 
             This mode never creates symlinks for Apple paths. It mounts APFS sparsebundles directly.
+            """
+        )
+    }
+
+    private func printSimHelp() {
+        print(
+            """
+            xcode-offload sim manages CoreSimulator devices through standard simctl.
+
+            Usage:
+              xcode-offload sim runtimes
+              xcode-offload sim devices [--all]
+              xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+              xcode-offload sim reset --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--verify] [--boot-timeout SECONDS] [--screenshot PATH]
+              xcode-offload sim verify (--name NAME | --udid UDID) [--boot-timeout SECONDS] [--screenshot PATH]
+              xcode-offload sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]
             """
         )
     }
