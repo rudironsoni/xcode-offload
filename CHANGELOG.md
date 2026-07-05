@@ -1,3 +1,10 @@
+## [0.3.1](https://github.com/rudironsoni/xcode-offload/compare/v0.3.0...v0.3.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* keep source release builds clean ([63fdb41](https://github.com/rudironsoni/xcode-offload/commit/63fdb41f605da640a445058856f2e907de5f4971))
+
 ## [0.3.0](https://github.com/rudironsoni/xcode-offload/compare/v0.2.0...v0.3.0) (2026-07-05)
 
 
