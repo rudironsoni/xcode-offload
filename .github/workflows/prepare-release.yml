@@ -10,6 +10,8 @@ jobs:
   prepare-release:
     name: Prepare and Publish Release
     runs-on: macos-15
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v7.0.0
@@ -76,3 +78,15 @@ jobs:
             ${{ steps.build.outputs.archive }}
             ${{ steps.build.outputs.checksum }}
           fail_on_unmatched_files: true
+
+      - name: Bump Homebrew tap
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        uses: Homebrew/actions/bump-packages@main
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          formulae: rudironsoni/tap/xcode-offload
+          fork: false
+
+      - name: Skip Homebrew tap bump
+        if: ${{ env.HOMEBREW_TAP_TOKEN == '' }}
+        run: echo "HOMEBREW_TAP_TOKEN is not configured; skipping Homebrew tap bump."

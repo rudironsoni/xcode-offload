@@ -6,6 +6,19 @@ The tool mounts APFS sparsebundles at normal Apple paths. It does not use symlin
 
 Docs: https://rudironsoni.github.io/xcode-offload/
 
+## Install
+
+```sh
+brew install rudironsoni/tap/xcode-offload
+```
+
+The formula builds from the tagged source release. If you prefer to tap first:
+
+```sh
+brew tap rudironsoni/tap
+brew install xcode-offload
+```
+
 ## What It Manages
 
 - `~/Library/Developer/CoreSimulator/Devices`

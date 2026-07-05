@@ -59,8 +59,14 @@
 
         <h2>GitHub automation</h2>
         <p>
-          GitHub Actions runs CI, prepares releases, publishes releases, and deploys this docs site. The workflow files live in the repository with the rest of the code.
+          GitHub Actions runs CI, prepares releases, publishes releases, deploys this docs site, and can open a Homebrew tap update when <code>HOMEBREW_TAP_TOKEN</code> is configured.
         </p>
+
+        <h2>Homebrew</h2>
+        <p>
+          The public tap formula builds from the tagged source release.
+        </p>
+        <pre><code>brew install rudironsoni/tap/xcode-offload</code></pre>
 
         <h2>Before upgrading</h2>
         <p>

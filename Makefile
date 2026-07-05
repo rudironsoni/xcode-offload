@@ -90,7 +90,7 @@ check-docs:
 	done; \
 	grep -F 'https://rudironsoni.github.io/xcode-offload/' README.md >/dev/null; \
 	grep -F 'xcode-offload mounts verify' docs/commands.html >/dev/null; \
-	grep -F 'The examples below assume the installed command is available as <code>xcode-offload</code>' docs/install.html >/dev/null
+	grep -F 'brew install rudironsoni/tap/xcode-offload' docs/install.html >/dev/null
 
 check-no-machine-defaults:
 	@set -eu; \
