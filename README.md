@@ -126,6 +126,35 @@ sudo xcode-offload mounts verify \
 
 `--mode e2e` can also recreate a disposable simulator, but only when `--allow-sim-delete` is set.
 
+## Simulator Recovery
+
+CoreSimulator should see the normal Apple device path:
+
+```text
+~/Library/Developer/CoreSimulator/Devices
+```
+
+That path should be backed by the managed `DeviceSet.sparsebundle`, not by a symlink and not by a raw physical external APFS volume mounted directly at the device path. Raw external APFS can look correct in `mount`, but CoreSimulator can still fail to create or update simulator state there.
+
+Use the tool to repair the mount and recreate the simulator inside the managed device store:
+
+```sh
+xcode-offload mounts repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --load
+
+xcode-offload sim reset \
+  --name Orlix-iPhone-15-Pro-Max \
+  --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro-Max \
+  --runtime com.apple.CoreSimulator.SimRuntime.iOS-26-5 \
+  --verify \
+  --screenshot /tmp/orlix-verify.png
+```
+
+`sim reset --verify` deletes the simulator with that name, creates a fresh one, boots it, waits for bootstatus, runs a command inside the simulator, and captures a screenshot. That is the proof that the simulator is usable, not just listed.
+
 ## Command Groups
 
 ```text
@@ -139,7 +168,7 @@ xcode-offload daemon install
 xcode-offload launchd install
 xcode-offload mounts install|repair|status|verify|uninstall
 xcode-offload xcodes install-profile|doctor|env
-xcode-offload sim runtimes|devices|recreate|open
+xcode-offload sim runtimes|devices|recreate|reset|verify|open
 ```
 
 The docs site has the command reference, runbooks, and troubleshooting notes.

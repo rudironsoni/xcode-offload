@@ -45,22 +45,81 @@ public struct SimulatorActions {
         actions.append("xcrun simctl create \(name.shellQuoted) \(deviceType.shellQuoted) \(runtime.shellQuoted)")
 
         if boot {
-            let bootResult = try runner.run("/usr/bin/xcrun", arguments: ["simctl", "boot", udid], environment: [:])
-            if !bootResult.succeeded && !isAlreadyBooted(bootResult) {
-                throw CommandError(nonEmptyOutput(from: bootResult), exitCode: bootResult.exitCode)
-            }
-            actions.append("xcrun simctl boot \(udid.shellQuoted)")
-
-            let bootStatus = try runner.run(
-                "/usr/bin/xcrun",
-                arguments: ["simctl", "bootstatus", udid, "-b"],
-                environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
-            )
-            guard bootStatus.succeeded else {
-                throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
-            }
-            actions.append("xcrun simctl bootstatus \(udid.shellQuoted) -b")
+            actions.append(contentsOf: try bootAndWait(udid: udid, bootTimeoutSeconds: bootTimeoutSeconds))
         }
+
+        return actions
+    }
+
+    public func reset(
+        name: String,
+        deviceType: String,
+        runtime: String,
+        boot: Bool,
+        verify: Bool,
+        bootTimeoutSeconds: Int,
+        screenshotPath: String?
+    ) throws -> [String] {
+        var actions = try recreate(
+            name: name,
+            deviceType: deviceType,
+            runtime: runtime,
+            boot: boot || verify,
+            bootTimeoutSeconds: bootTimeoutSeconds
+        )
+
+        if verify {
+            actions.append(
+                contentsOf: try verifyResponsiveAndScreenshot(
+                    udid: bootedUDID(from: actions),
+                    screenshotPath: screenshotPath
+                )
+            )
+        }
+
+        return actions
+    }
+
+    public func verify(
+        name: String?,
+        udid explicitUDID: String?,
+        bootTimeoutSeconds: Int,
+        screenshotPath: String?
+    ) throws -> [String] {
+        let device = try resolveDevice(name: name, udid: explicitUDID)
+        var actions = try bootAndWait(udid: device.udid, bootTimeoutSeconds: bootTimeoutSeconds)
+        actions.append(contentsOf: try verifyResponsiveAndScreenshot(udid: device.udid, screenshotPath: screenshotPath))
+
+        return actions
+    }
+
+    private func verifyResponsiveAndScreenshot(udid: String, screenshotPath: String?) throws -> [String] {
+        var actions: [String] = []
+
+        let spawnResult = try runner.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "spawn", udid, "/bin/echo", "responsive"],
+            environment: [:]
+        )
+        guard spawnResult.succeeded else {
+            throw CommandError(nonEmptyOutput(from: spawnResult), exitCode: spawnResult.exitCode)
+        }
+        let spawnOutput = spawnResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard spawnOutput == "responsive" else {
+            throw CommandError("simulator did not return responsive marker", exitCode: 65)
+        }
+        actions.append("xcrun simctl spawn \(udid.shellQuoted) /bin/echo responsive")
+
+        let screenshot = screenshotPath ?? "\(NSTemporaryDirectory())xcode-offload-\(udid)-screenshot.png"
+        let screenshotResult = try runner.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "io", udid, "screenshot", screenshot],
+            environment: [:]
+        )
+        guard screenshotResult.succeeded else {
+            throw CommandError(nonEmptyOutput(from: screenshotResult), exitCode: screenshotResult.exitCode)
+        }
+        actions.append("xcrun simctl io \(udid.shellQuoted) screenshot \(screenshot.shellQuoted)")
 
         return actions
     }
@@ -84,22 +143,20 @@ public struct SimulatorActions {
         if isKnownBooted {
             actions.append("xcrun simctl boot \(device.udid.shellQuoted) # already booted")
         } else {
-            let bootResult = try runner.run("/usr/bin/xcrun", arguments: ["simctl", "boot", device.udid], environment: [:])
-            if !bootResult.succeeded && !isAlreadyBooted(bootResult) {
-                throw CommandError(nonEmptyOutput(from: bootResult), exitCode: bootResult.exitCode)
-            }
-            actions.append("xcrun simctl boot \(device.udid.shellQuoted)")
+            actions.append(contentsOf: try bootAndWait(udid: device.udid, bootTimeoutSeconds: bootTimeoutSeconds))
         }
 
-        let bootStatus = try runner.run(
-            "/usr/bin/xcrun",
-            arguments: ["simctl", "bootstatus", device.udid, "-b"],
-            environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
-        )
-        guard bootStatus.succeeded else {
-            throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
+        if isKnownBooted {
+            let bootStatus = try runner.run(
+                "/usr/bin/xcrun",
+                arguments: ["simctl", "bootstatus", device.udid, "-b"],
+                environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
+            )
+            guard bootStatus.succeeded else {
+                throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
+            }
+            actions.append("xcrun simctl bootstatus \(device.udid.shellQuoted) -b")
         }
-        actions.append("xcrun simctl bootstatus \(device.udid.shellQuoted) -b")
 
         let openResult = try runner.run(
             "/usr/bin/open",
@@ -122,6 +179,38 @@ public struct SimulatorActions {
         actions.append("osascript -e 'tell application \"Simulator\" to activate'")
 
         return actions
+    }
+
+    private func bootAndWait(udid: String, bootTimeoutSeconds: Int) throws -> [String] {
+        var actions: [String] = []
+        let bootResult = try runner.run("/usr/bin/xcrun", arguments: ["simctl", "boot", udid], environment: [:])
+        if !bootResult.succeeded && !isAlreadyBooted(bootResult) {
+            throw CommandError(nonEmptyOutput(from: bootResult), exitCode: bootResult.exitCode)
+        }
+        actions.append("xcrun simctl boot \(udid.shellQuoted)")
+
+        let bootStatus = try runner.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "bootstatus", udid, "-b"],
+            environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
+        )
+        guard bootStatus.succeeded else {
+            throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
+        }
+        actions.append("xcrun simctl bootstatus \(udid.shellQuoted) -b")
+        return actions
+    }
+
+    private func bootedUDID(from actions: [String]) throws -> String {
+        guard let udid = actions
+            .first(where: { $0.hasPrefix("xcrun simctl boot ") })?
+            .split(separator: " ")
+            .last
+            .map(String.init),
+            !udid.isEmpty else {
+            throw CommandError("simulator reset could not resolve created UDID", exitCode: 65)
+        }
+        return udid
     }
 
     private func runSimctl(_ arguments: [String]) throws -> String {

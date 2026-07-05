@@ -135,7 +135,7 @@ public struct Doctor {
 
         let hdiutilInfo = hdiutilInfo()
         if hdiutilInfo.contains(config.deviceStoreImage) {
-            checks.append(DoctorCheck(.pass, "CoreSimulator Devices uses certified sparsebundle backend", detail: config.deviceStoreImage))
+            checks.append(DoctorCheck(.pass, "CoreSimulator Devices uses managed sparsebundle backend", detail: config.deviceStoreImage))
             return checks
         }
 
@@ -144,10 +144,22 @@ public struct Doctor {
             if mountLine.contains("noowners") {
                 checks.append(DoctorCheck(.fail, "CoreSimulator Devices APFS volume is mounted noowners"))
             } else {
-                checks.append(DoctorCheck(.warn, "CoreSimulator Devices uses experimental APFS volume", detail: config.apfsDeviceVolumeName))
+                checks.append(
+                    DoctorCheck(
+                        .fail,
+                        "CoreSimulator Devices uses unsupported direct APFS volume",
+                        detail: "mount \(config.deviceStoreImage) at \(config.deviceMount)"
+                    )
+                )
             }
         } else {
-            checks.append(DoctorCheck(.fail, "CoreSimulator Devices mount is not certified sparsebundle backend or experimental APFS volume"))
+            checks.append(
+                DoctorCheck(
+                    .fail,
+                    "CoreSimulator Devices mount is not the managed sparsebundle backend",
+                    detail: config.deviceStoreImage
+                )
+            )
         }
 
         return checks
@@ -183,7 +195,7 @@ public struct Doctor {
 
         if hdiutilInfo.contains(config.cacheImage) {
             checks.append(DoctorCheck(.pass, "Cache sparsebundle is attached", detail: config.cacheImage))
-            checks.append(DoctorCheck(.pass, "CoreSimulator Caches uses certified sparsebundle backend", detail: config.cacheImage))
+            checks.append(DoctorCheck(.pass, "CoreSimulator Caches uses managed sparsebundle backend", detail: config.cacheImage))
         } else {
             checks.append(DoctorCheck(.fail, "CoreSimulator Caches is not attached from configured sparsebundle", detail: config.cacheImage))
         }

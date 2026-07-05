@@ -85,6 +85,26 @@ PATH="/usr/bin:/bin:/usr/sbin:/sbin" /usr/bin/xcodebuild -version</code></pre>
           If APFS mount mode is working, these commands should see the mounted Apple paths without shim involvement.
         </p>
 
+        <h2>Recreate a broken simulator</h2>
+        <p>
+          Repair the managed device-store mount first, then recreate the simulator inside that mounted Apple path. Do not copy simulator folders between device stores.
+        </p>
+        <pre><code>xcode-offload mounts repair \
+  --root "$XCODE_OFFLOAD_ROOT" \
+  --home "$HOME" \
+  --scope user \
+  --load
+
+xcode-offload sim reset \
+  --name Orlix-iPhone-15-Pro-Max \
+  --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro-Max \
+  --runtime com.apple.CoreSimulator.SimRuntime.iOS-26-5 \
+  --verify \
+  --screenshot /tmp/orlix-verify.png</code></pre>
+        <p>
+          The verification step waits for bootstatus, runs <code>/bin/echo responsive</code> inside the simulator, and captures a screenshot. A listed device is not enough proof by itself.
+        </p>
+
         <h2>Back out user mount mode</h2>
         <pre><code>xcode-offload mounts uninstall --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --unload</code></pre>
 

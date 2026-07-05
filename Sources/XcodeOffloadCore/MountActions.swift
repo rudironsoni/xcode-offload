@@ -416,7 +416,36 @@ public struct MountActions {
         if TextParsers.hdiutilInfoContains(imagePath: managedMount.imagePath, mountPoint: managedMount.mountPoint, in: hdiutilOutput) {
             return DoctorCheck(.pass, "Mount \(managedMount.id) uses configured sparsebundle", detail: managedMount.imagePath)
         }
+        if managedMount.id == "devices", isPhysicalExternalAPFS(managedMount.mountPoint) {
+            return DoctorCheck(
+                .fail,
+                "Mount devices uses supported CoreSimulator backend",
+                detail: "physical external APFS volumes can block CoreSimulator writes; mount \(managedMount.imagePath) at \(managedMount.mountPoint)"
+            )
+        }
         return DoctorCheck(.fail, "Mount \(managedMount.id) uses configured sparsebundle", detail: managedMount.imagePath)
+    }
+
+    private func isPhysicalExternalAPFS(_ mountPoint: String) -> Bool {
+        guard let result = try? runner.run("/usr/sbin/diskutil", arguments: ["info", mountPoint], environment: [:]),
+              result.succeeded,
+              TextParsers.isAPFS(fromDiskutilInfo: result.stdout) else {
+            return false
+        }
+
+        let diskProtocol = TextParsers.diskProtocol(fromDiskutilInfo: result.stdout) ?? ""
+        let deviceLocation = TextParsers.deviceLocation(fromDiskutilInfo: result.stdout) ?? ""
+
+        if diskProtocol.localizedCaseInsensitiveContains("Disk Image") {
+            return false
+        }
+
+        let physicalExternalProtocols = ["USB", "Thunderbolt", "FireWire"]
+        if physicalExternalProtocols.contains(where: { diskProtocol.localizedCaseInsensitiveContains($0) }) {
+            return true
+        }
+
+        return !diskProtocol.isEmpty && deviceLocation.localizedCaseInsensitiveContains("External")
     }
 
     private func pathExists(_ path: String, label: String) -> DoctorCheck {

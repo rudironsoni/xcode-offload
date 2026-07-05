@@ -61,6 +61,14 @@ public enum TextParsers {
         return nil
     }
 
+    public static func diskProtocol(fromDiskutilInfo output: String) -> String? {
+        value(forDiskutilKey: "Protocol", in: output)
+    }
+
+    public static func deviceLocation(fromDiskutilInfo output: String) -> String? {
+        value(forDiskutilKey: "Device Location", in: output)
+    }
+
     public static func hdiutilInfoContains(imagePath: String, mountPoint: String, in output: String) -> Bool {
         output
             .components(separatedBy: "================================================")

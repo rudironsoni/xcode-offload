@@ -113,9 +113,13 @@ xcode-offload xcodes env install [--root PATH] [--home PATH] [--directory PATH] 
         <pre><code>xcode-offload sim runtimes
 xcode-offload sim devices [--all]
 xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+xcode-offload sim reset --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--verify] [--boot-timeout SECONDS] [--screenshot PATH]
+xcode-offload sim verify (--name NAME | --udid UDID) [--boot-timeout SECONDS] [--screenshot PATH]
 xcode-offload sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]</code></pre>
         <p>
           <code>sim recreate</code> deletes an existing simulator with the same name, creates a fresh one, and can boot it. First boot can be slow on recent iOS runtimes, so the boot timeout is intentionally long.
+          <code>sim reset --verify</code> recreates a named simulator, boots it, waits for bootstatus, runs a command inside it, and writes a screenshot.
+          <code>sim verify</code> performs the same usability proof for an existing simulator by name or UDID.
           <code>sim open</code> is idempotent: a simulator that is already booted is treated as ready, then Simulator is opened for that device.
         </p>
       </section>

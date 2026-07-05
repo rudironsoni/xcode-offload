@@ -82,6 +82,91 @@ import Testing
     #expect(plan.contains("xcrun simctl boot BOOTED-UDID"))
 }
 
+@Test func simulatorVerifyBootsSpawnsAndCapturesScreenshot() throws {
+    let runner = RecordingRunner { _, arguments, environment in
+        switch arguments {
+        case ["simctl", "list", "devices", "available"]:
+            return ProcessResult(
+                exitCode: 0,
+                stdout: """
+                == Devices ==
+                -- iOS 26.5 --
+                    Orlix (VERIFY-UDID) (Shutdown)
+                """,
+                stderr: ""
+            )
+        case ["simctl", "boot", "VERIFY-UDID"]:
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ["simctl", "bootstatus", "VERIFY-UDID", "-b"]:
+            #expect(environment["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT"] == "9")
+            return ProcessResult(exitCode: 0, stdout: "Finished\n", stderr: "")
+        case ["simctl", "spawn", "VERIFY-UDID", "/bin/echo", "responsive"]:
+            return ProcessResult(exitCode: 0, stdout: "responsive\n", stderr: "")
+        case ["simctl", "io", "VERIFY-UDID", "screenshot", "/tmp/verify.png"]:
+            return ProcessResult(exitCode: 0, stdout: "Wrote screenshot\n", stderr: "")
+        default:
+            return ProcessResult(exitCode: 99, stdout: "", stderr: "unexpected \(arguments)")
+        }
+    }
+
+    let plan = try SimulatorActions(runner: runner).verify(
+        name: "Orlix",
+        udid: nil,
+        bootTimeoutSeconds: 9,
+        screenshotPath: "/tmp/verify.png"
+    )
+
+    #expect(plan == [
+        "xcrun simctl boot VERIFY-UDID",
+        "xcrun simctl bootstatus VERIFY-UDID -b",
+        "xcrun simctl spawn VERIFY-UDID /bin/echo responsive",
+        "xcrun simctl io VERIFY-UDID screenshot /tmp/verify.png"
+    ])
+}
+
+@Test func simulatorResetCanVerifyNewDevice() throws {
+    let runner = RecordingRunner { _, arguments, environment in
+        switch arguments {
+        case ["simctl", "shutdown", "Orlix"]:
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ["simctl", "delete", "Orlix"]:
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ["simctl", "create", "Orlix", "device", "runtime"]:
+            return ProcessResult(exitCode: 0, stdout: "RESET-UDID\n", stderr: "")
+        case ["simctl", "boot", "RESET-UDID"]:
+            return ProcessResult(exitCode: 0, stdout: "", stderr: "")
+        case ["simctl", "bootstatus", "RESET-UDID", "-b"]:
+            #expect(environment["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT"] == "11")
+            return ProcessResult(exitCode: 0, stdout: "Finished\n", stderr: "")
+        case ["simctl", "spawn", "RESET-UDID", "/bin/echo", "responsive"]:
+            return ProcessResult(exitCode: 0, stdout: "responsive\n", stderr: "")
+        case ["simctl", "io", "RESET-UDID", "screenshot", "/tmp/reset.png"]:
+            return ProcessResult(exitCode: 0, stdout: "Wrote screenshot\n", stderr: "")
+        default:
+            return ProcessResult(exitCode: 99, stdout: "", stderr: "unexpected \(arguments)")
+        }
+    }
+
+    let plan = try SimulatorActions(runner: runner).reset(
+        name: "Orlix",
+        deviceType: "device",
+        runtime: "runtime",
+        boot: false,
+        verify: true,
+        bootTimeoutSeconds: 11,
+        screenshotPath: "/tmp/reset.png"
+    )
+
+    #expect(plan == [
+        "xcrun simctl delete Orlix",
+        "xcrun simctl create Orlix device runtime",
+        "xcrun simctl boot RESET-UDID",
+        "xcrun simctl bootstatus RESET-UDID -b",
+        "xcrun simctl spawn RESET-UDID /bin/echo responsive",
+        "xcrun simctl io RESET-UDID screenshot /tmp/reset.png"
+    ])
+}
+
 @Test func simulatorOpenByNameSkipsBootWhenDeviceIsAlreadyBooted() throws {
     let runner = RecordingRunner { executable, arguments, environment in
         switch (executable, arguments) {

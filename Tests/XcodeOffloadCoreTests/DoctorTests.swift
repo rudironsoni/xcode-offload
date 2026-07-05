@@ -34,8 +34,53 @@ import Testing
     )
 
     #expect(report.passed)
-    #expect(report.checks.contains(DoctorCheck(.pass, "CoreSimulator Devices uses certified sparsebundle backend", detail: config.deviceStoreImage)))
+    #expect(report.checks.contains(DoctorCheck(.pass, "CoreSimulator Devices uses managed sparsebundle backend", detail: config.deviceStoreImage)))
     #expect(report.checks.contains { $0.status == .pass && $0.label == "CoreSimulator Caches is mounted" })
+}
+
+@Test func doctorFailsUnsupportedDirectAPFSDeviceStore() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createDoctorFixture(config: config)
+
+    let runner = DoctorRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            /dev/disk7s1 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled, nobrowse)
+            /dev/disk11s1 on \(config.cacheMount) (apfs, local, nodev, nosuid, journaled, nobrowse)
+            """,
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(
+            exitCode: 0,
+            stdout: "image-path      : \(config.cacheImage)\n",
+            stderr: ""
+        ),
+        "/usr/sbin/diskutil": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            Volume Name:              XcodeSimulatorDevicesAPFS
+            File System Personality:  APFS
+            Owners:                   Enabled
+            """,
+            stderr: ""
+        )
+    ])
+
+    let report = Doctor(runner: runner).run(
+        config: config,
+        requireShims: false,
+        validateSimctl: false
+    )
+
+    #expect(!report.passed)
+    #expect(report.checks.contains {
+        $0.status == .fail
+            && $0.label == "CoreSimulator Devices uses unsupported direct APFS volume"
+            && ($0.detail?.contains(config.deviceStoreImage) ?? false)
+    })
 }
 
 @Test func doctorFailsWhenCacheMountIsMissing() throws {

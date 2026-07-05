@@ -506,6 +506,40 @@ struct CLI {
                 bootTimeoutSeconds: timeout
             )
             actions.forEach { print($0) }
+        case "reset":
+            let name = try arguments.requireOption("--name")
+            let deviceType = try arguments.requireOption("--device-type")
+            let runtime = try arguments.requireOption("--runtime")
+            let boot = arguments.popFlag("--boot")
+            let verify = arguments.popFlag("--verify")
+            let timeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
+            let screenshot = arguments.popOption("--screenshot")
+            try arguments.rejectUnknown()
+
+            let actions = try simulator.reset(
+                name: name,
+                deviceType: deviceType,
+                runtime: runtime,
+                boot: boot,
+                verify: verify,
+                bootTimeoutSeconds: timeout,
+                screenshotPath: screenshot
+            )
+            actions.forEach { print($0) }
+        case "verify":
+            let name = arguments.popOption("--name")
+            let udid = arguments.popOption("--udid")
+            let timeout = Int(arguments.popOption("--boot-timeout") ?? "1800") ?? 1800
+            let screenshot = arguments.popOption("--screenshot")
+            try arguments.rejectUnknown()
+
+            let actions = try simulator.verify(
+                name: name,
+                udid: udid,
+                bootTimeoutSeconds: timeout,
+                screenshotPath: screenshot
+            )
+            actions.forEach { print($0) }
         case "open":
             let name = arguments.popOption("--name")
             let udid = arguments.popOption("--udid")
@@ -636,6 +670,8 @@ struct CLI {
               xcode-offload sim runtimes
               xcode-offload sim devices [--all]
               xcode-offload sim recreate --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--boot-timeout SECONDS]
+              xcode-offload sim reset --name NAME --device-type TYPE --runtime RUNTIME [--boot] [--verify] [--boot-timeout SECONDS] [--screenshot PATH]
+              xcode-offload sim verify (--name NAME | --udid UDID) [--boot-timeout SECONDS] [--screenshot PATH]
               xcode-offload sim open (--name NAME | --udid UDID) [--boot-timeout SECONDS]
             """
         )

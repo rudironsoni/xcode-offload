@@ -76,6 +76,22 @@ xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope 
         <pre><code>mount | grep CoreSimulator
 hdiutil info</code></pre>
 
+        <h2>CoreSimulator Devices is mounted from a physical external APFS volume</h2>
+        <p>
+          The device path must stay a normal Apple path, but the backend should be the managed <code>DeviceSet.sparsebundle</code>. A raw physical external APFS volume mounted directly at <code>~/Library/Developer/CoreSimulator/Devices</code> can block CoreSimulator writes even when the mount looks healthy.
+        </p>
+        <pre><code>xcode-offload mounts repair --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user --load
+xcode-offload mounts status --root "$XCODE_OFFLOAD_ROOT" --home "$HOME" --scope user
+xcode-offload sim reset \
+  --name Orlix-iPhone-15-Pro-Max \
+  --device-type com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro-Max \
+  --runtime com.apple.CoreSimulator.SimRuntime.iOS-26-5 \
+  --verify \
+  --screenshot /tmp/orlix-verify.png</code></pre>
+        <p>
+          The reset command creates a fresh simulator in the currently mounted device store. Prefer that over migrating or copying old simulator directories.
+        </p>
+
         <h2>CoreSimulator cache is not mounted</h2>
         <p>
           Reload the system daemon, or reinstall it with the current root and home.
@@ -85,7 +101,7 @@ xcode-offload doctor --root "$XCODE_OFFLOAD_ROOT" --strict</code></pre>
 
         <h2>simctl is slow after a fresh simulator</h2>
         <p>
-          Recent iOS runtimes can spend several minutes in first-boot migration. <code>sim recreate --boot</code> uses a long timeout for that reason.
+          Recent iOS runtimes can spend several minutes in first-boot migration. <code>sim recreate --boot</code>, <code>sim reset --verify</code>, and <code>sim verify</code> use a long timeout for that reason.
         </p>
 
         <h2>Backups are taking space</h2>

@@ -95,6 +95,78 @@ import Testing
     #expect(report.checks.contains { $0.status == .fail && $0.label == "Mount derived-data uses configured sparsebundle" })
 }
 
+@Test func mountStatusExplainsPhysicalExternalAPFSDeviceStore() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+
+    let runner = MountStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: "/dev/disk5s2 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled)",
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(exitCode: 0, stdout: "", stderr: ""),
+        "/usr/sbin/diskutil": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            File System Personality: APFS
+            Owners: Enabled
+            Protocol: USB
+            Device Location: External
+            """,
+            stderr: ""
+        )
+    ])
+
+    let report = MountActions(runner: runner).status(config: config, scope: .user)
+
+    #expect(!report.passed)
+    #expect(report.checks.contains {
+        $0.status == .fail
+            && $0.label == "Mount devices uses supported CoreSimulator backend"
+            && ($0.detail?.contains("physical external APFS volumes") ?? false)
+    })
+}
+
+@Test func mountStatusDoesNotCallExternalDiskImageAPFSPhysicalDeviceStore() throws {
+    let root = try temporaryDirectory()
+    let home = try temporaryDirectory()
+    let config = StorageConfig(root: root, home: home)
+    try createMountFixture(config: config)
+
+    let runner = MountStubRunner(results: [
+        "/sbin/mount": ProcessResult(
+            exitCode: 0,
+            stdout: "/dev/disk5s2 on \(config.deviceMount) (apfs, local, nodev, nosuid, journaled)",
+            stderr: ""
+        ),
+        "/usr/bin/hdiutil": ProcessResult(exitCode: 0, stdout: "", stderr: ""),
+        "/usr/sbin/diskutil": ProcessResult(
+            exitCode: 0,
+            stdout: """
+            File System Personality: APFS
+            Owners: Enabled
+            Protocol: Disk Image
+            Device Location: External
+            """,
+            stderr: ""
+        )
+    ])
+
+    let report = MountActions(runner: runner).status(config: config, scope: .user)
+
+    #expect(!report.passed)
+    #expect(report.checks.contains {
+        $0.status == .fail
+            && $0.label == "Mount devices uses configured sparsebundle"
+    })
+    #expect(!report.checks.contains {
+        $0.label == "Mount devices uses supported CoreSimulator backend"
+    })
+}
+
 @Test func mountLaunchdPlistsPassPlutilLintAndHelpersAvoidSymlinks() throws {
     let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
     let templates = MountLaunchdTemplates(config: config, toolPath: "/opt/homebrew/bin/xcode-offload")
