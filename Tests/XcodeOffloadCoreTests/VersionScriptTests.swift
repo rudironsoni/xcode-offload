@@ -20,6 +20,29 @@ import Testing
     #expect(version == "2.0.1")
 }
 
+@Test func versionScriptDoesNotMarkSourceTarballBuildsDirty() throws {
+    let sourceDirectory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: sourceDirectory) }
+
+    try FileManager.default.copyItem(
+        atPath: "\(FileManager.default.currentDirectoryPath)/Makefile",
+        toPath: sourceDirectory.appendingPathComponent("Makefile").path
+    )
+
+    let output = try temporaryOutputPath()
+    defer { try? FileManager.default.removeItem(atPath: output) }
+
+    let version = try runVersionScript(
+        output: output,
+        environment: ["XCODE_OFFLOAD_RELEASE_TAG": "v3.2.1"],
+        currentDirectory: sourceDirectory.path
+    )
+    let generated = try String(contentsOfFile: output, encoding: .utf8)
+
+    #expect(version == "3.2.1")
+    #expect(generated.contains("public static let dirty = false"))
+}
+
 @Test func versionScriptUsesDevelopmentBuildMetadataForInvalidTagLikeValues() throws {
     let output = try temporaryOutputPath()
     defer { try? FileManager.default.removeItem(atPath: output) }
@@ -38,11 +61,15 @@ import Testing
     #expect(version.wholeMatch(of: #/[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?/#) != nil)
 }
 
-private func runVersionScript(output: String, environment: [String: String]) throws -> String {
+private func runVersionScript(
+    output: String,
+    environment: [String: String],
+    currentDirectory: String = FileManager.default.currentDirectoryPath
+) throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/make")
     process.arguments = ["--no-print-directory", "generate-version-source", "OUTPUT=\(output)"]
-    process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    process.currentDirectoryURL = URL(fileURLWithPath: currentDirectory)
     process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
 
     let stdout = Pipe()
@@ -63,8 +90,14 @@ private func runVersionScript(output: String, environment: [String: String]) thr
 }
 
 private func temporaryOutputPath() throws -> String {
+    try temporaryDirectory()
+        .appendingPathComponent("GeneratedBuildMetadata.swift")
+        .path
+}
+
+private func temporaryDirectory() throws -> URL {
     let directory = URL(fileURLWithPath: NSTemporaryDirectory())
         .appendingPathComponent("xcode-offload-version-test-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    return directory.appendingPathComponent("GeneratedBuildMetadata.swift").path
+    return directory
 }

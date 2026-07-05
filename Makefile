@@ -44,8 +44,10 @@ generate-version-source:
 	commit="$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"; \
 	build_date="$$(date -u +%Y-%m-%dT%H:%M:%SZ)"; \
 	dirty="false"; \
-	if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then \
-	  dirty="true"; \
+	if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+	  if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then \
+	    dirty="true"; \
+	  fi; \
 	fi; \
 	{ \
 	  printf '%s\n' 'public enum GeneratedBuildMetadata {'; \
