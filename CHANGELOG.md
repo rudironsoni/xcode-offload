@@ -1,3 +1,17 @@
+## [0.3.0](https://github.com/rudironsoni/xcode-offload/compare/v0.2.0...v0.3.0) (2026-07-05)
+
+
+### Features
+
+* add xcodes compatibility profile ([b57c225](https://github.com/rudironsoni/xcode-offload/commit/b57c225d54f05226cca34641605a1f1b6d608c23))
+
+
+### Bug Fixes
+
+* **cli:** show simulator command help ([878c98e](https://github.com/rudironsoni/xcode-offload/commit/878c98e0f13a2c4fc1ded31d7ef3647ebba641dc))
+* make mount logs readable ([c79f828](https://github.com/rudironsoni/xcode-offload/commit/c79f828d572805003b2f2836a9a522f8b94a4cfb))
+* verify simulator usability on external storage ([d919a15](https://github.com/rudironsoni/xcode-offload/commit/d919a158adb76de68ea103b48f451db18741d608))
+
 ## [0.2.0](https://github.com/rudironsoni/xcode-offload/compare/v0.1.0...v0.2.0) (2026-07-03)
 
 
