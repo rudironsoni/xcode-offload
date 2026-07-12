@@ -8,8 +8,8 @@ import Testing
     #expect(XcodebuildArguments.rewrite(arguments: ["-list", "-project", "App.xcodeproj"], config: config) == ["-list", "-project", "App.xcodeproj"])
 }
 
-@Test func xcodebuildArgumentsRouteBuildProductsToExternalStorage() {
-    let config = StorageConfig(root: "/Volumes/ExternalXcode")
+@Test func xcodebuildArgumentsRouteBuildProductsThroughNormalMountedPath() {
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
 
     let rewritten = XcodebuildArguments.rewrite(
         arguments: [
@@ -24,11 +24,12 @@ import Testing
     )
 
     #expect(rewritten.contains("-derivedDataPath"))
-    #expect(rewritten.contains("/Volumes/ExternalXcode/Xcode/DerivedData"))
+    #expect(rewritten.contains("/Users/rudi/Library/Developer/Xcode/DerivedData"))
     #expect(rewritten.contains("-clonedSourcePackagesDirPath"))
     #expect(rewritten.contains("/Volumes/ExternalXcode/Xcode/PackageCache"))
-    #expect(rewritten.contains("SYMROOT=/Volumes/ExternalXcode/Xcode/DerivedData/Build/Products"))
-    #expect(rewritten.contains("OBJROOT=/Volumes/ExternalXcode/Xcode/DerivedData/Build/Intermediates.noindex"))
+    #expect(rewritten.contains("SYMROOT=/Users/rudi/Library/Developer/Xcode/DerivedData/Build/Products"))
+    #expect(rewritten.contains("OBJROOT=/Users/rudi/Library/Developer/Xcode/DerivedData/Build/Intermediates.noindex"))
+    #expect(!rewritten.contains { $0.contains("/Volumes/ExternalXcode/Xcode/DerivedData") })
     #expect(rewritten.contains("-project"))
     #expect(rewritten.contains("App.xcodeproj"))
     #expect(!rewritten.contains("/tmp/old"))
@@ -36,7 +37,7 @@ import Testing
 }
 
 @Test func xcodebuildArgumentsPreserveWorkspaceAndScheme() {
-    let config = StorageConfig(root: "/Volumes/ExternalXcode")
+    let config = StorageConfig(root: "/Volumes/ExternalXcode", home: "/Users/rudi")
 
     let rewritten = XcodebuildArguments.rewrite(
         arguments: [
@@ -54,8 +55,8 @@ import Testing
     #expect(rewritten.contains("-scheme"))
     #expect(rewritten.contains("App"))
     #expect(rewritten.contains("OTHER_SWIFT_FLAGS=-DDEBUG"))
-    #expect(rewritten.contains("CLANG_MODULE_CACHE_PATH=/Volumes/ExternalXcode/Xcode/DerivedData/ModuleCache.noindex"))
-    #expect(rewritten.contains("SWIFT_MODULE_CACHE_PATH=/Volumes/ExternalXcode/Xcode/DerivedData/ModuleCache.noindex"))
+    #expect(rewritten.contains("CLANG_MODULE_CACHE_PATH=/Users/rudi/Library/Developer/Xcode/DerivedData/ModuleCache.noindex"))
+    #expect(rewritten.contains("SWIFT_MODULE_CACHE_PATH=/Users/rudi/Library/Developer/Xcode/DerivedData/ModuleCache.noindex"))
 }
 
 @Test func xcodebuildArgumentsDropDanglingStorageFlag() {

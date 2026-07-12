@@ -155,14 +155,14 @@ public enum XcodebuildArguments {
 
         return [
             "-derivedDataPath",
-            config.derivedData,
+            config.mountDerivedDataMount,
             "-clonedSourcePackagesDirPath",
             config.packageCache,
-            "SYMROOT=\(config.derivedData)/Build/Products",
-            "OBJROOT=\(config.derivedData)/Build/Intermediates.noindex",
-            "SHARED_PRECOMPS_DIR=\(config.derivedData)/Build/Intermediates.noindex/PrecompiledHeaders",
-            "CLANG_MODULE_CACHE_PATH=\(config.derivedData)/ModuleCache.noindex",
-            "SWIFT_MODULE_CACHE_PATH=\(config.derivedData)/ModuleCache.noindex"
+            "SYMROOT=\(config.mountDerivedDataMount)/Build/Products",
+            "OBJROOT=\(config.mountDerivedDataMount)/Build/Intermediates.noindex",
+            "SHARED_PRECOMPS_DIR=\(config.mountDerivedDataMount)/Build/Intermediates.noindex/PrecompiledHeaders",
+            "CLANG_MODULE_CACHE_PATH=\(config.mountDerivedDataMount)/ModuleCache.noindex",
+            "SWIFT_MODULE_CACHE_PATH=\(config.mountDerivedDataMount)/ModuleCache.noindex"
         ] + filtered
     }
 }
