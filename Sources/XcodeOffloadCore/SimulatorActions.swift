@@ -72,7 +72,8 @@ public struct SimulatorActions {
             actions.append(
                 contentsOf: try verifyResponsiveAndScreenshot(
                     udid: bootedUDID(from: actions),
-                    screenshotPath: screenshotPath
+                    screenshotPath: screenshotPath,
+                    timeoutSeconds: bootTimeoutSeconds
                 )
             )
         }
@@ -88,18 +89,29 @@ public struct SimulatorActions {
     ) throws -> [String] {
         let device = try resolveDevice(name: name, udid: explicitUDID)
         var actions = try bootAndWait(udid: device.udid, bootTimeoutSeconds: bootTimeoutSeconds)
-        actions.append(contentsOf: try verifyResponsiveAndScreenshot(udid: device.udid, screenshotPath: screenshotPath))
+        actions.append(
+            contentsOf: try verifyResponsiveAndScreenshot(
+                udid: device.udid,
+                screenshotPath: screenshotPath,
+                timeoutSeconds: bootTimeoutSeconds
+            )
+        )
 
         return actions
     }
 
-    private func verifyResponsiveAndScreenshot(udid: String, screenshotPath: String?) throws -> [String] {
+    private func verifyResponsiveAndScreenshot(
+        udid: String,
+        screenshotPath: String?,
+        timeoutSeconds: Int
+    ) throws -> [String] {
         var actions: [String] = []
 
         let spawnResult = try runner.run(
             "/usr/bin/xcrun",
             arguments: ["simctl", "spawn", udid, "/bin/echo", "responsive"],
-            environment: [:]
+            environment: [:],
+            timeoutSeconds: TimeInterval(timeoutSeconds)
         )
         guard spawnResult.succeeded else {
             throw CommandError(nonEmptyOutput(from: spawnResult), exitCode: spawnResult.exitCode)
@@ -114,7 +126,8 @@ public struct SimulatorActions {
         let screenshotResult = try runner.run(
             "/usr/bin/xcrun",
             arguments: ["simctl", "io", udid, "screenshot", screenshot],
-            environment: [:]
+            environment: [:],
+            timeoutSeconds: TimeInterval(timeoutSeconds)
         )
         guard screenshotResult.succeeded else {
             throw CommandError(nonEmptyOutput(from: screenshotResult), exitCode: screenshotResult.exitCode)
@@ -150,7 +163,8 @@ public struct SimulatorActions {
             let bootStatus = try runner.run(
                 "/usr/bin/xcrun",
                 arguments: ["simctl", "bootstatus", device.udid, "-b"],
-                environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
+                environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"],
+                timeoutSeconds: TimeInterval(bootTimeoutSeconds)
             )
             guard bootStatus.succeeded else {
                 throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
@@ -183,7 +197,12 @@ public struct SimulatorActions {
 
     private func bootAndWait(udid: String, bootTimeoutSeconds: Int) throws -> [String] {
         var actions: [String] = []
-        let bootResult = try runner.run("/usr/bin/xcrun", arguments: ["simctl", "boot", udid], environment: [:])
+        let bootResult = try runner.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "boot", udid],
+            environment: [:],
+            timeoutSeconds: TimeInterval(bootTimeoutSeconds)
+        )
         if !bootResult.succeeded && !isAlreadyBooted(bootResult) {
             throw CommandError(nonEmptyOutput(from: bootResult), exitCode: bootResult.exitCode)
         }
@@ -192,7 +211,8 @@ public struct SimulatorActions {
         let bootStatus = try runner.run(
             "/usr/bin/xcrun",
             arguments: ["simctl", "bootstatus", udid, "-b"],
-            environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"]
+            environment: ["SIMCTL_CHILD_BOOTSTATUS_TIMEOUT": "\(bootTimeoutSeconds)"],
+            timeoutSeconds: TimeInterval(bootTimeoutSeconds)
         )
         guard bootStatus.succeeded else {
             throw CommandError(nonEmptyOutput(from: bootStatus), exitCode: bootStatus.exitCode)
